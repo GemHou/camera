@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>Camera Test</title>
+
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      color: white;
+      font-family: Arial;
+    }
+
+    video {
+      width: 80%;
+      max-width: 800px;
+      border-radius: 12px;
+      background: #111;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h2>📷 摄像头测试</h2>
+
+  <video id="video" autoplay playsinline></video>
+
+  <button onclick="startCamera()">启动摄像头</button>
+
+  <script>
+    const video = document.getElementById('video');
+
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false
+        });
+
+        video.srcObject = stream;
+
+      } catch (err) {
+        alert("摄像头启动失败：" + err);
+        console.error(err);
+      }
+    }
+  </script>
+
+</body>
+</html>
