@@ -24,13 +24,23 @@
       background: #111;
     }
 
-    button {
+    .controls {
       margin-top: 20px;
+      display: flex;
+      gap: 12px;
+    }
+
+    button {
       padding: 10px 20px;
       font-size: 16px;
       border: none;
       border-radius: 8px;
       cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
   </style>
 </head>
@@ -41,10 +51,17 @@
 
   <video id="video" autoplay playsinline></video>
 
-  <button onclick="startCamera()">启动摄像头</button>
+  <div class="controls">
+    <button onclick="startCamera()">启动摄像头</button>
+    <button id="captureBtn" onclick="takePhoto()" disabled>拍照保存</button>
+  </div>
+
+  <canvas id="canvas" hidden></canvas>
 
   <script>
     const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const captureBtn = document.getElementById('captureBtn');
 
     async function startCamera() {
       try {
@@ -54,11 +71,35 @@
         });
 
         video.srcObject = stream;
+        captureBtn.disabled = false;
 
       } catch (err) {
         alert("摄像头启动失败：" + err);
         console.error(err);
       }
+    }
+
+    function takePhoto() {
+      if (!video.srcObject) {
+        alert("请先启动摄像头");
+        return;
+      }
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+        link.href = url;
+        link.download = `photo-${timestamp}.jpg`;
+        link.click();
+
+        URL.revokeObjectURL(url);
+      }, 'image/jpeg', 0.92);
     }
   </script>
 
