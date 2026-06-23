@@ -140,8 +140,8 @@
 
   <canvas id="canvas" hidden></canvas>
 
-  <script src="vendor/onnxruntime-web/ort.wasm.min.js?v=3"></script>
-  <script src="depth.js?v=3"></script>
+  <script src="vendor/onnxruntime-web/ort.wasm.min.js?v=4"></script>
+  <script src="depth.js?v=4"></script>
   <script>
     const MODEL_URL = 'models/depth_anything_v2_small.onnx';
     const WASM_BASE = new URL('vendor/onnxruntime-web/', window.location.href).href;
@@ -186,13 +186,14 @@
       setStatus('准备加载 Depth Anything V2…');
 
       try {
-        await DepthEngine.initDepthModel({
+        const { numThreads } = await DepthEngine.initDepthModel({
           modelUrl: MODEL_URL,
           wasmBase: WASM_BASE,
           onStatus: (text) => setStatus(text),
         });
         modelReady = true;
-        setStatus('模型就绪，请启动摄像头', 'ready');
+        const threadHint = numThreads > 1 ? `（${numThreads} 线程 WASM）` : '（单线程 WASM）';
+        setStatus(`模型就绪${threadHint}，请启动摄像头`, 'ready');
         updateDepthControls();
       } catch (err) {
         console.error(err);

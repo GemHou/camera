@@ -21,6 +21,10 @@ class Handler(SimpleHTTPRequestHandler):
 
     def end_headers(self):
         path = self.path.split("?", 1)[0]
+        # Enable crossOriginIsolated → ONNX Runtime WASM multi-threading (SharedArrayBuffer)
+        self.send_header("Cross-Origin-Opener-Policy", "same-origin")
+        self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
+        self.send_header("Cross-Origin-Resource-Policy", "same-origin")
         if path.endswith((".html", ".js")):
             self.send_header("Cache-Control", "no-store")
         if path.endswith(".onnx"):

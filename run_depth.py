@@ -1,6 +1,7 @@
 """Run Depth Anything V2 Small ONNX inference on a local image."""
 
 import argparse
+import os
 import time
 from pathlib import Path
 
@@ -13,19 +14,32 @@ DEFAULT_MODEL = SCRIPT_DIR / "models" / "depth_anything_v2_small.onnx"
 INPUT_SIZE = 518
 
 
-def load_model(model_path: Path) -> ort.InferenceSession:
+def load_model(model_path: Path, threads: int | None = None) -> ort.InferenceSession:
     if not model_path.is_file():
         raise FileNotFoundError(
             f"Model not found: {model_path}\n"
             "Expected bundled ONNX at models/depth_anything_v2_small.onnx"
         )
 
+    n_threads = threads or os.cpu_count() or 4
+    sess_options = ort.SessionOptions()
+    sess_options.intra_op_num_threads = n_threads
+    sess_options.inter_op_num_threads = 1
+    sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+
     providers = ort.get_available_providers()
     preferred = []
     if "CUDAExecutionProvider" in providers:
         preferred.append("CUDAExecutionProvider")
     preferred.append("CPUExecutionProvider")
-    return ort.InferenceSession(str(model_path), providers=preferred)
+
+    session = ort.InferenceSession(
+        str(model_path),
+        sess_options=sess_options,
+        providers=preferred,
+    )
+    print(f"CPU threads (intra_op): {n_threads}")
+    return session
 
 
 def preprocess(image_bgr: np.ndarray) -> tuple[np.ndarray, tuple[int, int]]:
@@ -47,12 +61,12 @@ def postprocess(depth: np.ndarray, original_size: tuple[int, int]) -> np.ndarray
     return cv2.applyColorMap(depth, cv2.COLORMAP_INFERNO)
 
 
-def run(image_path: Path, output_path: Path, model_path: Path) -> None:
+def run(image_path: Path, output_path: Path, model_path: Path, threads: int | None) -> None:
     image = cv2.imread(str(image_path))
     if image is None:
         raise FileNotFoundError(f"Could not read image: {image_path}")
 
-    session = load_model(model_path)
+    session = load_model(model_path, threads)
     input_name = session.get_inputs()[0].name
 
     tensor, original_size = preprocess(image)
@@ -79,5 +93,11 @@ if __name__ == "__main__":
     parser.add_argument("image", type=Path, default=Path("20260622-094912.jpg"), nargs="?")
     parser.add_argument("-o", "--output", type=Path, default=Path("20260622-094912_depth.jpg"))
     parser.add_argument("-m", "--model", type=Path, default=DEFAULT_MODEL)
+    parser.add_argument(
+        "-t", "--threads",
+        type=int,
+        default=None,
+        help="CPU 推理线程数（默认：全部逻辑核心）",
+    )
     args = parser.parse_args()
-    run(args.image, args.output, args.model)
+    run(args.image, args.output, args.model, args.threads)

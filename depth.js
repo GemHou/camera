@@ -32,8 +32,12 @@ function buildInfernoLUT() {
 
 function configureOrt(wasmBase) {
   ort.env.wasm.wasmPaths = wasmBase;
-  ort.env.wasm.numThreads = 1;
   ort.env.wasm.simd = true;
+
+  const canMultiThread = typeof crossOriginIsolated !== 'undefined' && crossOriginIsolated;
+  const cores = navigator.hardwareConcurrency || 4;
+  ort.env.wasm.numThreads = canMultiThread ? Math.min(4, cores) : 1;
+  return ort.env.wasm.numThreads;
 }
 
 function formatProgress(loaded, total) {
@@ -193,13 +197,18 @@ async function initDepthModel({ modelUrl, wasmBase, onStatus }) {
   }
 
   infernoLUT = buildInfernoLUT();
-  configureOrt(wasmBase);
+  const numThreads = configureOrt(wasmBase);
+  if (numThreads > 1) {
+    onStatus?.(`ONNX Runtime 多线程 WASM：${numThreads} 线程`);
+  } else if (!crossOriginIsolated) {
+    onStatus?.('单线程模式（需 serve.py 提供的 COOP 头才能多核）');
+  }
   await verifyWasmRuntime(wasmBase, onStatus);
 
   const modelBuffer = await fetchModelBuffer(modelUrl, onStatus);
   session = await createSessionWithProgress(modelBuffer, onStatus);
   onStatus?.('模型就绪');
-  return session;
+  return { session, numThreads: ort.env.wasm.numThreads };
 }
 
 function preprocessFromVideo(video) {
