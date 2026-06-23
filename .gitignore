@@ -1,0 +1,13 @@
+# Depth Anything V2 source — only needed to re-export ONNX (see scripts/optimize_da2.py)
+vendor/Depth-Anything-V2/
+
+# Downloaded PyTorch weights (~100MB)
+models/*.pth
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Local benchmark / test outputs
+bench_*.jpg
+test_threads.jpg

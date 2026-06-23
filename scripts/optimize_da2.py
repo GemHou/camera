@@ -40,6 +40,23 @@ def download_weights() -> Path:
     return WEIGHTS_PATH
 
 
+def ensure_da2_repo() -> None:
+    if (DA2_ROOT / "depth_anything_v2" / "dpt.py").is_file():
+        return
+    import subprocess
+
+    DA2_ROOT.parent.mkdir(parents=True, exist_ok=True)
+    print("Cloning Depth-Anything-V2 (shallow, for ONNX export only)…")
+    subprocess.run(
+        [
+            "git", "clone", "--depth", "1",
+            "https://github.com/DepthAnything/Depth-Anything-V2.git",
+            str(DA2_ROOT),
+        ],
+        check=True,
+    )
+
+
 def load_torch_model() -> torch.nn.Module:
     sys.path.insert(0, str(DA2_ROOT))
     from depth_anything_v2.dpt import DepthAnythingV2
@@ -130,6 +147,7 @@ def main() -> None:
     args = parser.parse_args()
 
     download_weights()
+    ensure_da2_repo()
     model = load_torch_model()
 
     best_path: Path | None = None
