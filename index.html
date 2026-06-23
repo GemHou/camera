@@ -134,13 +134,14 @@
   <p class="hint">
     推理在浏览器本地运行（WASM），桌面约 1 秒/帧，手机会更慢。
     自动模式按「上一帧完成 + 1.2 秒」节流，避免排队卡顿。
-    请用 <code>python serve.py</code> 启动本地服务，不要直接双击 html，也不要用普通 <code>http.server</code>（缺少 WASM MIME）。
+    请用 <code>python serve.py</code> 启动，手机访问终端里显示的局域网 IP（如 http://192.168.x.x:8080/）。
+    首次下载约 95MB，手机需 1–3 分钟；下载完成后会缓存，下次更快。
   </p>
 
   <canvas id="canvas" hidden></canvas>
 
-  <script src="vendor/onnxruntime-web/ort.wasm.min.js?v=2"></script>
-  <script src="depth.js?v=2"></script>
+  <script src="vendor/onnxruntime-web/ort.wasm.min.js?v=3"></script>
+  <script src="depth.js?v=3"></script>
   <script>
     const MODEL_URL = 'models/depth_anything_v2_small.onnx';
     const WASM_BASE = new URL('vendor/onnxruntime-web/', window.location.href).href;
