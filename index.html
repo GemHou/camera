@@ -111,7 +111,7 @@
 <body>
 
   <h2>📷 摄像头 + DA2 深度</h2>
-  <div id="status">正在加载模型（约 95MB）…</div>
+  <div id="status">正在初始化…</div>
 
   <div class="preview-row">
     <div class="panel">
@@ -134,13 +134,16 @@
   <p class="hint">
     推理在浏览器本地运行（WASM），桌面约 1 秒/帧，手机会更慢。
     自动模式按「上一帧完成 + 1.2 秒」节流，避免排队卡顿。
-    请用本地 HTTP 服务打开（如 <code>python -m http.server 8080</code>），不要直接双击 html。
+    请用 <code>python serve.py</code> 启动本地服务，不要直接双击 html，也不要用普通 <code>http.server</code>（缺少 WASM MIME）。
   </p>
 
   <canvas id="canvas" hidden></canvas>
 
+  <script src="vendor/onnxruntime-web/ort.wasm.min.js?v=2"></script>
+  <script src="depth.js?v=2"></script>
   <script>
     const MODEL_URL = 'models/depth_anything_v2_small.onnx';
+    const WASM_BASE = new URL('vendor/onnxruntime-web/', window.location.href).href;
     const AUTO_INTERVAL_MS = 1200;
 
     const video = document.getElementById('video');
@@ -152,12 +155,10 @@
     const depthBtn = document.getElementById('depthBtn');
     const autoBtn = document.getElementById('autoBtn');
 
-    let worker = null;
     let modelReady = false;
     let inferring = false;
     let autoDepth = false;
     let autoTimer = null;
-    let lastElapsedMs = null;
 
     function setStatus(text, kind = '') {
       statusEl.textContent = text;
@@ -166,44 +167,36 @@
 
     function updateDepthControls() {
       const camOn = !!video.srcObject;
-      const canRun = modelReady && camOn && !inferring;
-      depthBtn.disabled = !canRun;
-      autoBtn.disabled = !modelReady || !camOn;
+      depthBtn.disabled = !(modelReady && camOn && !inferring);
+      autoBtn.disabled = !(modelReady && camOn);
     }
 
-    function initWorker() {
+    async function initDepth() {
       if (location.protocol === 'file:') {
-        setStatus('请用 http://localhost 打开页面，file:// 无法加载模型', 'error');
+        setStatus('请用 http://127.0.0.1:8080 打开页面，file:// 无法加载模型', 'error');
         return;
       }
 
-      worker = new Worker('depth-worker.js');
-      worker.onmessage = (event) => {
-        const msg = event.data;
-        if (msg.type === 'ready') {
-          modelReady = true;
-          setStatus('模型就绪，请启动摄像头', 'ready');
-          updateDepthControls();
-          return;
-        }
-        if (msg.type === 'result') {
-          onDepthResult(msg);
-          return;
-        }
-        if (msg.type === 'error') {
-          inferring = false;
-          setStatus('推理失败：' + msg.message, 'error');
-          depthCanvas.classList.remove('processing');
-          updateDepthControls();
-          scheduleAutoDepth();
-        }
-      };
+      if (typeof ort === 'undefined') {
+        setStatus('ONNX Runtime 脚本加载失败，请确认已运行 python serve.py', 'error');
+        return;
+      }
 
-      worker.onerror = (err) => {
-        setStatus('Worker 错误：' + err.message, 'error');
-      };
+      setStatus('准备加载 Depth Anything V2…');
 
-      worker.postMessage({ type: 'init', modelUrl: MODEL_URL });
+      try {
+        await DepthEngine.initDepthModel({
+          modelUrl: MODEL_URL,
+          wasmBase: WASM_BASE,
+          onStatus: (text) => setStatus(text),
+        });
+        modelReady = true;
+        setStatus('模型就绪，请启动摄像头', 'ready');
+        updateDepthControls();
+      } catch (err) {
+        console.error(err);
+        setStatus('加载失败：' + (err.message || err), 'error');
+      }
     }
 
     async function startCamera() {
@@ -252,23 +245,6 @@
       }, 'image/jpeg', 0.92);
     }
 
-    async function captureFrameBitmap() {
-      const w = video.videoWidth;
-      const h = video.videoHeight;
-      if (!w || !h) {
-        throw new Error('视频尚未就绪');
-      }
-      if (typeof OffscreenCanvas !== 'undefined') {
-        const off = new OffscreenCanvas(w, h);
-        off.getContext('2d').drawImage(video, 0, 0, w, h);
-        return createImageBitmap(off);
-      }
-      canvas.width = w;
-      canvas.height = h;
-      canvas.getContext('2d').drawImage(video, 0, 0, w, h);
-      return createImageBitmap(canvas);
-    }
-
     async function runDepthInference() {
       if (!modelReady || !video.srcObject || inferring) return;
 
@@ -278,34 +254,22 @@
       updateDepthControls();
 
       try {
-        const bitmap = await captureFrameBitmap();
-        worker.postMessage(
-          { type: 'infer', bitmap, width: video.videoWidth, height: video.videoHeight },
-          [bitmap]
-        );
+        const { imageData, elapsedMs, width, height } = await DepthEngine.inferDepthFromVideo(video);
+        depthCanvas.width = width;
+        depthCanvas.height = height;
+        depthCtx.putImageData(imageData, 0, 0);
+
+        const fps = (1000 / elapsedMs).toFixed(1);
+        setStatus(`上次推理 ${elapsedMs.toFixed(0)} ms（约 ${fps} FPS）`, 'ready');
       } catch (err) {
+        setStatus('推理失败：' + (err.message || err), 'error');
+        console.error(err);
+      } finally {
         inferring = false;
         depthCanvas.classList.remove('processing');
-        setStatus(String(err), 'error');
         updateDepthControls();
         scheduleAutoDepth();
       }
-    }
-
-    function onDepthResult(msg) {
-      const imageData = new ImageData(new Uint8ClampedArray(msg.buffer), msg.width, msg.height);
-      depthCanvas.width = msg.width;
-      depthCanvas.height = msg.height;
-      depthCtx.putImageData(imageData, 0, 0);
-
-      inferring = false;
-      lastElapsedMs = msg.elapsedMs;
-      depthCanvas.classList.remove('processing');
-
-      const fps = (1000 / msg.elapsedMs).toFixed(1);
-      setStatus(`上次推理 ${msg.elapsedMs.toFixed(0)} ms（约 ${fps} FPS）`, 'ready');
-      updateDepthControls();
-      scheduleAutoDepth();
     }
 
     function estimateDepthOnce() {
@@ -356,7 +320,7 @@
       }
     });
 
-    initWorker();
+    initDepth();
   </script>
 
 </body>
