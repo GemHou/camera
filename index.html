@@ -140,12 +140,12 @@
 
   <canvas id="canvas" hidden></canvas>
 
-  <script src="vendor/onnxruntime-web/ort.wasm.min.js?v=4"></script>
-  <script src="depth.js?v=4"></script>
+  <script src="vendor/onnxruntime-web/ort.wasm.min.js?v=5"></script>
+  <script src="depth.js?v=5"></script>
   <script>
-    const MODEL_URL = 'models/depth_anything_v2_small.onnx';
     const WASM_BASE = new URL('vendor/onnxruntime-web/', window.location.href).href;
     const AUTO_INTERVAL_MS = 1200;
+    const RUNTIME_CONFIG_URL = 'models/runtime_config.json';
 
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
@@ -156,6 +156,7 @@
     const depthBtn = document.getElementById('depthBtn');
     const autoBtn = document.getElementById('autoBtn');
 
+    let runtimeConfig = null;
     let modelReady = false;
     let inferring = false;
     let autoDepth = false;
@@ -185,15 +186,21 @@
 
       setStatus('准备加载 Depth Anything V2…');
 
+      setStatus('读取模型配置…');
+
       try {
-        const { numThreads } = await DepthEngine.initDepthModel({
-          modelUrl: MODEL_URL,
+        runtimeConfig = await DepthEngine.loadRuntimeConfig(RUNTIME_CONFIG_URL);
+        const modelUrl = runtimeConfig?.modelUrl || 'models/depth_anything_v2_small.onnx';
+
+        const { numThreads, inputSize } = await DepthEngine.initDepthModel({
+          modelUrl,
           wasmBase: WASM_BASE,
+          runtimeConfig,
           onStatus: (text) => setStatus(text),
         });
         modelReady = true;
-        const threadHint = numThreads > 1 ? `（${numThreads} 线程 WASM）` : '（单线程 WASM）';
-        setStatus(`模型就绪${threadHint}，请启动摄像头`, 'ready');
+        const threadHint = numThreads > 1 ? `（${numThreads} 线程）` : '（单线程）';
+        setStatus(`模型就绪 ${inputSize}px${threadHint}，请启动摄像头`, 'ready');
         updateDepthControls();
       } catch (err) {
         console.error(err);

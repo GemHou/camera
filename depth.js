@@ -1,9 +1,7 @@
-/* Depth Anything V2 Small — browser-side ONNX (main thread) */
+/* Depth Anything V2 — browser-side ONNX (main thread) */
 
-const INPUT_SIZE = 518;
 const MEAN = [0.485, 0.456, 0.406];
 const STD = [0.229, 0.224, 0.225];
-const MODEL_CACHE_KEY = 'depth_anything_v2_small_v1';
 const DB_NAME = 'camera-depth-cache';
 const DB_STORE = 'models';
 
@@ -14,6 +12,9 @@ const INFERNO_ANCHORS = [
 
 let infernoLUT = null;
 let session = null;
+let inputSize = 518;
+let modelCacheKey = 'depth_anything_v2_small_v1';
+let forceSingleThread = false;
 
 function buildInfernoLUT() {
   const lut = new Uint8ClampedArray(256 * 3);
@@ -30,9 +31,30 @@ function buildInfernoLUT() {
   return lut;
 }
 
+async function loadRuntimeConfig(configUrl = 'models/runtime_config.json') {
+  try {
+    const resp = await fetch(configUrl, { cache: 'no-store' });
+    if (!resp.ok) {
+      return null;
+    }
+    const cfg = await resp.json();
+    inputSize = cfg.inputSize || inputSize;
+    modelCacheKey = cfg.cacheKey || modelCacheKey;
+    forceSingleThread = !!cfg.forceSingleThread;
+    return cfg;
+  } catch {
+    return null;
+  }
+}
+
 function configureOrt(wasmBase) {
   ort.env.wasm.wasmPaths = wasmBase;
   ort.env.wasm.simd = true;
+
+  if (forceSingleThread) {
+    ort.env.wasm.numThreads = 1;
+    return 1;
+  }
 
   const canMultiThread = typeof crossOriginIsolated !== 'undefined' && crossOriginIsolated;
   const cores = navigator.hardwareConcurrency || 4;
@@ -66,7 +88,7 @@ async function loadCachedModel() {
     const db = await openModelDb();
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(DB_STORE, 'readonly');
-      const get = tx.objectStore(DB_STORE).get(MODEL_CACHE_KEY);
+      const get = tx.objectStore(DB_STORE).get(modelCacheKey);
       get.onsuccess = () => resolve(get.result || null);
       get.onerror = () => reject(get.error);
     });
@@ -80,7 +102,7 @@ async function saveCachedModel(buffer) {
     const db = await openModelDb();
     await new Promise((resolve, reject) => {
       const tx = db.transaction(DB_STORE, 'readwrite');
-      tx.objectStore(DB_STORE).put(buffer, MODEL_CACHE_KEY);
+      tx.objectStore(DB_STORE).put(buffer, modelCacheKey);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
@@ -145,7 +167,7 @@ function downloadArrayBuffer(url, onProgress) {
 
     xhr.ontimeout = () => {
       if (stallTimer) clearInterval(stallTimer);
-      reject(new Error('下载超时：95MB 模型在手机上可能需要几分钟，请重试'));
+      reject(new Error('下载超时，请重试'));
     };
 
     onProgress?.(0, 0, false);
@@ -161,7 +183,7 @@ async function fetchModelBuffer(modelUrl, onStatus) {
     return cached;
   }
 
-  onStatus?.('开始下载模型（约 95MB，手机首次可能需 1–3 分钟）…');
+  onStatus?.('开始下载模型…');
 
   const buffer = await downloadArrayBuffer(modelUrl, (loaded, total, stalled) => {
     if (stalled && loaded > 0) {
@@ -179,7 +201,7 @@ async function createSessionWithProgress(modelBuffer, onStatus) {
   let seconds = 0;
   const timer = setInterval(() => {
     seconds += 1;
-    onStatus?.(`解析 ONNX 模型… ${seconds}s（手机可能更慢，请耐心等待）`);
+    onStatus?.(`解析 ONNX 模型… ${seconds}s`);
   }, 1000);
 
   try {
@@ -191,24 +213,31 @@ async function createSessionWithProgress(modelBuffer, onStatus) {
   }
 }
 
-async function initDepthModel({ modelUrl, wasmBase, onStatus }) {
+async function initDepthModel({ modelUrl, wasmBase, onStatus, runtimeConfig = null }) {
   if (typeof ort === 'undefined') {
     throw new Error('ONNX Runtime 未加载：请确认 vendor/onnxruntime-web/ort.wasm.min.js 可访问');
   }
 
+  if (runtimeConfig) {
+    inputSize = runtimeConfig.inputSize || inputSize;
+    modelCacheKey = runtimeConfig.cacheKey || modelCacheKey;
+    forceSingleThread = !!runtimeConfig.forceSingleThread;
+  }
+
   infernoLUT = buildInfernoLUT();
   const numThreads = configureOrt(wasmBase);
-  if (numThreads > 1) {
-    onStatus?.(`ONNX Runtime 多线程 WASM：${numThreads} 线程`);
-  } else if (!crossOriginIsolated) {
-    onStatus?.('单线程模式（需 serve.py 提供的 COOP 头才能多核）');
-  }
+  const modeLabel = forceSingleThread
+    ? '单线程（1Hz 模式）'
+    : numThreads > 1
+      ? `${numThreads} 线程 WASM`
+      : '单线程 WASM';
+  onStatus?.(`加载 ${inputSize}×${inputSize} 模型，${modeLabel}`);
   await verifyWasmRuntime(wasmBase, onStatus);
 
   const modelBuffer = await fetchModelBuffer(modelUrl, onStatus);
   session = await createSessionWithProgress(modelBuffer, onStatus);
   onStatus?.('模型就绪');
-  return { session, numThreads: ort.env.wasm.numThreads };
+  return { session, numThreads, inputSize };
 }
 
 function preprocessFromVideo(video) {
@@ -219,14 +248,14 @@ function preprocessFromVideo(video) {
   }
 
   const canvas = document.createElement('canvas');
-  canvas.width = INPUT_SIZE;
-  canvas.height = INPUT_SIZE;
+  canvas.width = inputSize;
+  canvas.height = inputSize;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  ctx.drawImage(video, 0, 0, INPUT_SIZE, INPUT_SIZE);
-  const { data } = ctx.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE);
+  ctx.drawImage(video, 0, 0, inputSize, inputSize);
+  const { data } = ctx.getImageData(0, 0, inputSize, inputSize);
 
-  const tensor = new Float32Array(1 * 3 * INPUT_SIZE * INPUT_SIZE);
-  const plane = INPUT_SIZE * INPUT_SIZE;
+  const tensor = new Float32Array(1 * 3 * inputSize * inputSize);
+  const plane = inputSize * inputSize;
   for (let i = 0; i < plane; i++) {
     const r = data[i * 4] / 255;
     const g = data[i * 4 + 1] / 255;
@@ -248,10 +277,10 @@ function depthToImageData(depthData, outWidth, outHeight) {
   const range = max - min + 1e-8;
 
   const small = document.createElement('canvas');
-  small.width = INPUT_SIZE;
-  small.height = INPUT_SIZE;
+  small.width = inputSize;
+  small.height = inputSize;
   const sctx = small.getContext('2d');
-  const imageData = sctx.createImageData(INPUT_SIZE, INPUT_SIZE);
+  const imageData = sctx.createImageData(inputSize, inputSize);
   const px = imageData.data;
 
   for (let i = 0; i < depthData.length; i++) {
@@ -278,7 +307,7 @@ async function inferDepthFromVideo(video) {
 
   const { tensor, width, height } = preprocessFromVideo(video);
   const inputName = session.inputNames[0];
-  const input = new ort.Tensor('float32', tensor, [1, 3, INPUT_SIZE, INPUT_SIZE]);
+  const input = new ort.Tensor('float32', tensor, [1, 3, inputSize, inputSize]);
 
   const start = performance.now();
   const outputs = await session.run({ [inputName]: input });
@@ -290,6 +319,7 @@ async function inferDepthFromVideo(video) {
 }
 
 window.DepthEngine = {
+  loadRuntimeConfig,
   initDepthModel,
   inferDepthFromVideo,
 };

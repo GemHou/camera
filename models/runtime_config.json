@@ -1,0 +1,8 @@
+{
+  "modelUrl": "models/da2_vits_196_fp32.onnx",
+  "inputSize": 196,
+  "cacheKey": "da2_vits_196_fp32_v1",
+  "forceSingleThread": true,
+  "benchmarkMsSingleCorePython": 173.6,
+  "note": "392px 更清晰 (~805ms Python)；196px 更快，目标浏览器单核 ~1Hz"
+}
