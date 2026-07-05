@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Camera + Depth Anything V2</title>
+  <title>Camera + DA2 Depth + Crop + Beauty</title>
 
   <style>
     * { box-sizing: border-box; }
@@ -67,6 +67,18 @@
       filter: grayscale(0.2);
     }
 
+    /* camera overlay: video + bbox canvas stacked */
+    .cam-wrapper {
+      position: relative;
+    }
+    .cam-wrapper video,
+    .cam-wrapper canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: auto;
+    }
+
     .controls {
       margin-top: 16px;
       display: flex;
@@ -97,6 +109,23 @@
       cursor: not-allowed;
     }
 
+    .scores {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .score-item {
+      background: #1a1a2e;
+      border-radius: 8px;
+      padding: 6px 8px;
+      text-align: center;
+    }
+    .score-label { font-size: 11px; color: #888; }
+    .score-value { font-size: 16px; font-weight: bold; color: #e94560; }
+    .score-value.high { color: #4CAF50; }
+    .score-value.mid { color: #FF9800; }
+
     .hint {
       margin-top: 14px;
       font-size: 12px;
@@ -110,13 +139,24 @@
 
 <body>
 
-  <h2>📷 摄像头 + DA2 深度</h2>
+  <h2>📷 摄像头 + DA2 深度 + 裁切 + 美学</h2>
   <div id="status">正在初始化…</div>
 
   <div class="preview-row">
     <div class="panel">
       <label>摄像头</label>
-      <video id="video" autoplay playsinline muted></video>
+      <div class="cam-wrapper" style="aspect-ratio:4/3">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="bboxCanvas"></canvas>
+      </div>
+      <div class="scores" id="scoreBoard">
+        <div class="score-item"><div class="score-label">综合</div><div class="score-value" id="s-total">-</div></div>
+        <div class="score-item"><div class="score-label">元素</div><div class="score-value" id="s-element">-</div></div>
+        <div class="score-item"><div class="score-label">故事</div><div class="score-value" id="s-story">-</div></div>
+        <div class="score-item"><div class="score-label">构图</div><div class="score-value" id="s-composition">-</div></div>
+        <div class="score-item"><div class="score-label">光影</div><div class="score-value" id="s-light">-</div></div>
+        <div class="score-item"><div class="score-label">氛围</div><div class="score-value" id="s-atmosphere">-</div></div>
+      </div>
     </div>
     <div class="panel">
       <label>深度图（Depth Anything V2 Small）</label>
@@ -127,81 +167,125 @@
   <div class="controls">
     <button onclick="startCamera()">启动摄像头</button>
     <button id="captureBtn" onclick="takePhoto()" disabled>拍照保存</button>
-    <button id="depthBtn" class="primary" onclick="estimateDepthOnce()" disabled>深度估算</button>
-    <button id="autoBtn" onclick="toggleAutoDepth()" disabled>自动刷新：关</button>
+    <button id="depthBtn" onclick="estimateDepthOnce()" disabled>深度估算</button>
+    <button id="autoDepthBtn" onclick="toggleAutoDepth()" disabled>深度自动：关</button>
+    <button id="cbBtn" class="primary" onclick="runCropBeauty()" disabled>裁切+美学</button>
+    <button id="autoCbBtn" onclick="toggleAutoCb()" disabled>美学自动：关</button>
+    <button id="allBtn" onclick="runAll()" disabled>全部推理</button>
+    <button id="autoAllBtn" onclick="toggleAutoAll()" disabled>全自动：关</button>
   </div>
 
   <p class="hint">
-    推理在浏览器本地运行（WASM），桌面约 1 秒/帧，手机会更慢。
-    自动模式按「上一帧完成 + 1.2 秒」节流，避免排队卡顿。
-    请用 <code>python serve.py</code> 启动，手机访问终端里显示的局域网 IP（如 http://192.168.x.x:8080/）。
-    首次下载约 95MB，手机需 1–3 分钟；下载完成后会缓存，下次更快。
+    推理在浏览器本地运行（WASM）。裁切+美学需额外下载约 92 MB 模型（首次）。
+    自动模式按「上一帧完成 + 1.5 秒」节流。请用 <code>python serve.py</code> 启动。
   </p>
 
   <canvas id="canvas" hidden></canvas>
 
   <script src="vendor/onnxruntime-web/ort.wasm.min.js?v=5"></script>
   <script src="depth.js?v=5"></script>
+  <script src="crop_beauty.js?v=1"></script>
   <script>
     const WASM_BASE = new URL('vendor/onnxruntime-web/', window.location.href).href;
-    const AUTO_INTERVAL_MS = 1200;
+    const AUTO_INTERVAL_MS = 1500;
     const RUNTIME_CONFIG_URL = 'models/runtime_config.json';
+    const CROP_MODEL_URL = 'models/crop_model.onnx';
+    const BEAUTY_MODEL_URL = 'models/beauty_score.onnx';
 
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const depthCanvas = document.getElementById('depthCanvas');
     const depthCtx = depthCanvas.getContext('2d');
+    const bboxCanvas = document.getElementById('bboxCanvas');
+    const bboxCtx = bboxCanvas.getContext('2d');
     const statusEl = document.getElementById('status');
     const captureBtn = document.getElementById('captureBtn');
     const depthBtn = document.getElementById('depthBtn');
-    const autoBtn = document.getElementById('autoBtn');
+    const autoDepthBtn = document.getElementById('autoDepthBtn');
+    const cbBtn = document.getElementById('cbBtn');
+    const autoCbBtn = document.getElementById('autoCbBtn');
+    const allBtn = document.getElementById('allBtn');
+    const autoAllBtn = document.getElementById('autoAllBtn');
 
-    let runtimeConfig = null;
-    let modelReady = false;
+    const SCORE_KEYS = ['total','element','story','composition','light','atmosphere'];
+
+    let depthReady = false;
+    let cropReady = false;
+    let beautyReady = false;
     let inferring = false;
-    let autoDepth = false;
-    let autoTimer = null;
+    let autoDepth = false, autoDepthTimer = null;
+    let autoCb = false, autoCbTimer = null;
+    let autoAll = false, autoAllTimer = null;
+
+    let lastBbox = null;
 
     function setStatus(text, kind = '') {
-      statusEl.textContent = text;
-      statusEl.className = kind;
+      statusEl.textContent = text; statusEl.className = kind;
     }
 
-    function updateDepthControls() {
+    function updateScoreDisplay(scores) {
+      for (const k of SCORE_KEYS) {
+        const el = document.getElementById('s-' + k);
+        const v = Math.round(scores[k]);
+        el.textContent = v;
+        el.className = 'score-value' + (v >= 75 ? ' high' : v >= 50 ? ' mid' : '');
+      }
+    }
+
+    function drawBbox(bbox) {
+      const vw = video.videoWidth, vh = video.videoHeight;
+      if (!vw || !vh) return;
+      bboxCanvas.width = vw; bboxCanvas.height = vh;
+      bboxCtx.clearRect(0, 0, vw, vh);
+      if (!bbox) return;
+      const bx = Math.round(bbox[0]*vw), by = Math.round(bbox[1]*vh);
+      const bw = Math.round((bbox[2]-bbox[0])*vw), bh = Math.round((bbox[3]-bbox[1])*vh);
+      bboxCtx.strokeStyle = '#00FF00';
+      bboxCtx.lineWidth = Math.max(3, vw/320);
+      bboxCtx.strokeRect(bx, by, bw, bh);
+    }
+
+    function updateAllControls() {
       const camOn = !!video.srcObject;
-      depthBtn.disabled = !(modelReady && camOn && !inferring);
-      autoBtn.disabled = !(modelReady && camOn);
+      depthBtn.disabled = !(depthReady && camOn && !inferring);
+      autoDepthBtn.disabled = !(depthReady && camOn);
+      cbBtn.disabled = !(cropReady && beautyReady && camOn && !inferring);
+      autoCbBtn.disabled = !(cropReady && beautyReady && camOn);
+      allBtn.disabled = !(depthReady && cropReady && beautyReady && camOn && !inferring);
+      autoAllBtn.disabled = !(depthReady && cropReady && beautyReady && camOn);
     }
 
     async function initDepth() {
       if (location.protocol === 'file:') {
-        setStatus('请用 http://127.0.0.1:8080 打开页面，file:// 无法加载模型', 'error');
+        setStatus('请用 http://127.0.0.1:8080 打开页面', 'error');
         return;
       }
-
       if (typeof ort === 'undefined') {
-        setStatus('ONNX Runtime 脚本加载失败，请确认已运行 python serve.py', 'error');
+        setStatus('ONNX Runtime 未加载', 'error');
         return;
       }
-
-      setStatus('准备加载 Depth Anything V2…');
-
-      setStatus('读取模型配置…');
-
       try {
-        runtimeConfig = await DepthEngine.loadRuntimeConfig(RUNTIME_CONFIG_URL);
-        const modelUrl = runtimeConfig?.modelUrl || 'models/depth_anything_v2_small.onnx';
-
+        const rc = await DepthEngine.loadRuntimeConfig(RUNTIME_CONFIG_URL);
+        const mu = rc?.modelUrl || 'models/depth_anything_v2_small.onnx';
         const { numThreads, inputSize } = await DepthEngine.initDepthModel({
-          modelUrl,
-          wasmBase: WASM_BASE,
-          runtimeConfig,
-          onStatus: (text) => setStatus(text),
+          modelUrl: mu, wasmBase: WASM_BASE, runtimeConfig: rc,
+          onStatus: (t) => setStatus(t),
         });
-        modelReady = true;
-        const threadHint = numThreads > 1 ? `（${numThreads} 线程）` : '（单线程）';
-        setStatus(`模型就绪 ${inputSize}px${threadHint}，请启动摄像头`, 'ready');
-        updateDepthControls();
+        depthReady = true;
+        setStatus('深度模型就绪，加载裁切+美学模型…', 'ready');
+        updateAllControls();
+
+        // load crop + beauty models in parallel
+        await Promise.all([
+          CropBeautyEngine.initCropModel({ wasmBase: WASM_BASE, modelUrl: CROP_MODEL_URL,
+            onStatus: (t) => setStatus(t) }),
+          CropBeautyEngine.initBeautyModel({ wasmBase: WASM_BASE, modelUrl: BEAUTY_MODEL_URL,
+            onStatus: (t) => setStatus(t) }),
+        ]);
+        cropReady = true; beautyReady = true;
+        const threadHint = numThreads > 1 ? `（${numThreads}线程）` : '（单线程）';
+        setStatus(`全部模型就绪 ${inputSize}px${threadHint}，请启动摄像头`, 'ready');
+        updateAllControls();
       } catch (err) {
         console.error(err);
         setStatus('加载失败：' + (err.message || err), 'error');
@@ -211,8 +295,7 @@
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
-          audio: false
+          video: { facingMode: 'environment' }, audio: false
         });
         video.srcObject = stream;
         await video.play();
@@ -223,109 +306,150 @@
         depthCtx.fillRect(0, 0, depthCanvas.width, depthCanvas.height);
 
         captureBtn.disabled = false;
-        updateDepthControls();
-        if (modelReady) {
-          setStatus('就绪 — 点击「深度估算」或开启自动刷新', 'ready');
-        }
+        updateAllControls();
+        setStatus('就绪', 'ready');
       } catch (err) {
         alert('摄像头启动失败：' + err);
-        console.error(err);
       }
     }
 
     function takePhoto() {
-      if (!video.srcObject) {
-        alert('请先启动摄像头');
-        return;
-      }
-
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      if (!video.srcObject) { alert('请先启动摄像头'); return; }
+      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
       canvas.getContext('2d').drawImage(video, 0, 0);
-
       canvas.toBlob((blob) => {
         const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        link.href = url;
-        link.download = `photo-${timestamp}.jpg`;
-        link.click();
+        const a = document.createElement('a');
+        a.href = url; a.download = `photo-${Date.now()}.jpg`; a.click();
         URL.revokeObjectURL(url);
       }, 'image/jpeg', 0.92);
     }
 
+    // ── Depth ──
     async function runDepthInference() {
-      if (!modelReady || !video.srcObject || inferring) return;
-
+      if (!depthReady || !video.srcObject || inferring) return;
       inferring = true;
       depthCanvas.classList.add('processing');
-      setStatus('推理中…', 'busy');
-      updateDepthControls();
-
+      setStatus('深度推理中…', 'busy');
+      updateAllControls();
       try {
-        const { imageData, elapsedMs, width, height } = await DepthEngine.inferDepthFromVideo(video);
-        depthCanvas.width = width;
-        depthCanvas.height = height;
-        depthCtx.putImageData(imageData, 0, 0);
-
-        const fps = (1000 / elapsedMs).toFixed(1);
-        setStatus(`上次推理 ${elapsedMs.toFixed(0)} ms（约 ${fps} FPS）`, 'ready');
+        const r = await DepthEngine.inferDepthFromVideo(video);
+        depthCanvas.width = r.width; depthCanvas.height = r.height;
+        depthCtx.putImageData(r.imageData, 0, 0);
+        setStatus(`深度 ${r.elapsedMs.toFixed(0)} ms`, 'ready');
       } catch (err) {
-        setStatus('推理失败：' + (err.message || err), 'error');
-        console.error(err);
+        setStatus('深度失败：' + (err.message || err), 'error');
       } finally {
         inferring = false;
         depthCanvas.classList.remove('processing');
-        updateDepthControls();
+        updateAllControls();
         scheduleAutoDepth();
+        scheduleAutoAll();
       }
     }
-
-    function estimateDepthOnce() {
-      stopAutoDepth(false);
-      runDepthInference();
-    }
-
+    function estimateDepthOnce() { stopAllAutoExcept('depth'); runDepthInference(); }
     function toggleAutoDepth() {
       autoDepth = !autoDepth;
-      autoBtn.textContent = autoDepth ? '自动刷新：开' : '自动刷新：关';
-      autoBtn.classList.toggle('active', autoDepth);
-      if (autoDepth) {
-        scheduleAutoDepth(true);
-      } else {
-        stopAutoDepth(false);
-      }
+      autoDepthBtn.textContent = autoDepth ? '深度自动：开' : '深度自动：关';
+      autoDepthBtn.classList.toggle('active', autoDepth);
+      if (autoDepth) scheduleAutoDepth(true); else { clearTimeout(autoDepthTimer); autoDepthTimer = null; }
     }
-
-    function stopAutoDepth(resetLabel) {
-      if (autoTimer) {
-        clearTimeout(autoTimer);
-        autoTimer = null;
-      }
-      if (resetLabel) {
-        autoDepth = false;
-        autoBtn.textContent = '自动刷新：关';
-        autoBtn.classList.remove('active');
-      }
-    }
-
-    function scheduleAutoDepth(immediate = false) {
+    function scheduleAutoDepth(immediate) {
       if (!autoDepth) return;
-      if (autoTimer) clearTimeout(autoTimer);
+      clearTimeout(autoDepthTimer);
+      autoDepthTimer = setTimeout(() => { if (!inferring) runDepthInference(); }, immediate ? 0 : AUTO_INTERVAL_MS);
+    }
 
-      const delay = immediate ? 0 : AUTO_INTERVAL_MS;
-      autoTimer = setTimeout(() => {
-        autoTimer = null;
-        if (autoDepth && !inferring) {
-          runDepthInference();
+    // ── Crop + Beauty ──
+    async function runCropBeauty() {
+      if (!cropReady || !beautyReady || !video.srcObject || inferring) return;
+      inferring = true;
+      setStatus('裁切+美学推理中…', 'busy');
+      updateAllControls();
+      try {
+        const r = await CropBeautyEngine.runCropAndBeauty(video);
+        lastBbox = r.bbox;
+        drawBbox(r.bbox);
+        updateScoreDisplay(r);
+        setStatus(`裁切 ${r.cropMs.toFixed(0)} ms + 美学 ${r.beautyMs.toFixed(0)} ms`, 'ready');
+      } catch (err) {
+        setStatus('裁切+美学失败：' + (err.message || err), 'error');
+      } finally {
+        inferring = false;
+        updateAllControls();
+        scheduleAutoCb();
+        scheduleAutoAll();
+      }
+    }
+    function toggleAutoCb() {
+      autoCb = !autoCb;
+      autoCbBtn.textContent = autoCb ? '美学自动：开' : '美学自动：关';
+      autoCbBtn.classList.toggle('active', autoCb);
+      if (autoCb) scheduleAutoCb(true); else { clearTimeout(autoCbTimer); autoCbTimer = null; }
+    }
+    function scheduleAutoCb(immediate) {
+      if (!autoCb) return;
+      clearTimeout(autoCbTimer);
+      autoCbTimer = setTimeout(() => { if (!inferring) runCropBeauty(); }, immediate ? 0 : AUTO_INTERVAL_MS);
+    }
+
+    // ── All ──
+    async function runAll() {
+      if (!depthReady || !cropReady || !beautyReady || !video.srcObject || inferring) return;
+      inferring = true;
+      depthCanvas.classList.add('processing');
+      setStatus('全部推理中…', 'busy');
+      updateAllControls();
+      try {
+        const [depthR, cbR] = await Promise.all([
+          DepthEngine.inferDepthFromVideo(video).catch(e => ({ error: e })),
+          CropBeautyEngine.runCropAndBeauty(video).catch(e => ({ error: e })),
+        ]);
+        if (depthR.imageData) {
+          depthCanvas.width = depthR.width; depthCanvas.height = depthR.height;
+          depthCtx.putImageData(depthR.imageData, 0, 0);
         }
-      }, delay);
+        if (cbR.bbox) {
+          lastBbox = cbR.bbox;
+          drawBbox(cbR.bbox);
+          updateScoreDisplay(cbR);
+          setStatus(`深度 ${depthR.elapsedMs?.toFixed(0)||'?'} ms / 裁切 ${cbR.cropMs?.toFixed(0)||'?'} ms / 美学 ${cbR.beautyMs?.toFixed(0)||'?'} ms`, 'ready');
+        } else {
+          setStatus('深度就绪，裁切+美学失败', 'ready');
+        }
+      } catch (err) {
+        setStatus('全部推理失败：' + (err.message || err), 'error');
+      } finally {
+        inferring = false;
+        depthCanvas.classList.remove('processing');
+        updateAllControls();
+        scheduleAutoAll();
+      }
+    }
+    function toggleAutoAll() {
+      autoAll = !autoAll;
+      autoAllBtn.textContent = autoAll ? '全自动：开' : '全自动：关';
+      autoAllBtn.classList.toggle('active', autoAll);
+      if (autoAll) scheduleAutoAll(true); else { clearTimeout(autoAllTimer); autoAllTimer = null; }
+    }
+    function scheduleAutoAll(immediate) {
+      if (!autoAll) return;
+      clearTimeout(autoAllTimer);
+      autoAllTimer = setTimeout(() => { if (!inferring) runAll(); }, immediate ? 0 : AUTO_INTERVAL_MS);
+    }
+
+    function stopAllAutoExcept(keep) {
+      if (keep !== 'depth') { autoDepth = false; autoDepthBtn.textContent = '深度自动：关'; autoDepthBtn.classList.remove('active'); clearTimeout(autoDepthTimer); autoDepthTimer = null; }
+      if (keep !== 'cb') { autoCb = false; autoCbBtn.textContent = '美学自动：关'; autoCbBtn.classList.remove('active'); clearTimeout(autoCbTimer); autoCbTimer = null; }
+      if (keep !== 'all') { autoAll = false; autoAllBtn.textContent = '全自动：关'; autoAllBtn.classList.remove('active'); clearTimeout(autoAllTimer); autoAllTimer = null; }
     }
 
     video.addEventListener('loadedmetadata', () => {
       if (video.videoWidth && video.videoHeight) {
-        depthCanvas.width = video.videoWidth;
-        depthCanvas.height = video.videoHeight;
+        depthCanvas.width = video.videoWidth; depthCanvas.height = video.videoHeight;
+        bboxCanvas.width = video.videoWidth; bboxCanvas.height = video.videoHeight;
+        depthCtx.fillStyle = '#111';
+        depthCtx.fillRect(0, 0, depthCanvas.width, depthCanvas.height);
       }
     });
 
