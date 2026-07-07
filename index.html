@@ -58,8 +58,10 @@
     <button id="captureBtn" onclick="takePhoto()" disabled>PZBC</button>
     <button id="cbBtn" class="primary" onclick="runCropBeauty()" disabled>CQ+MX</button>
     <button id="autoCbBtn" onclick="toggleAuto()" disabled>ZDSX：G</button>
-    <button onclick="document.getElementById('fileInput').click()">SC MX WJ</button>
-    <input id="fileInput" type="file" accept=".onnx" multiple style="display:none" onchange="handleFileUpload(event)">
+    <button onclick="document.getElementById('cropInput').click()">SC CQ MX</button>
+    <input id="cropInput" type="file" accept=".onnx" style="display:none" onchange="handleFileUpload('crop', event)">
+    <button onclick="document.getElementById('beautyInput').click()">SC MX MX</button>
+    <input id="beautyInput" type="file" accept=".onnx" style="display:none" onchange="handleFileUpload('beauty', event)">
   </div>
 
   <p class="hint">
@@ -150,26 +152,22 @@
       }
     }
 
-    async function handleFileUpload(event) {
-      const files = event.target.files;
-      if (!files.length) return;
-      setStatus('JZSC WJMX…', 'busy');
+    async function handleFileUpload(type, event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      setStatus(`JZ ${type} MX…`, 'busy');
       try {
-        const cropFile = Array.from(files).find(f => f.name.includes('crop'));
-        const beautyFile = Array.from(files).find(f => f.name.includes('beauty'));
-        if (!cropFile || !beautyFile) {
-          setStatus('QXZ CS crop  MX HD beauty MX .onnx WJ', 'error');
-          return;
+        const fn = type === 'crop' ? CropBeautyEngine.initCropFromFile : CropBeautyEngine.initBeautyFromFile;
+        await fn(file, { wasmBase: WASM_BASE, onStatus: t => setStatus(t) });
+        if (type === 'crop') cropReady = true; else beautyReady = true;
+        if (cropReady && beautyReady) {
+          setStatus('MXJX，QQDSXT', 'ready');
+          updateControls();
+        } else {
+          setStatus(`${type} MXJX，QSC LX MX`, 'ready');
         }
-        await Promise.all([
-          CropBeautyEngine.initCropFromFile(cropFile, { wasmBase: WASM_BASE, onStatus: t => setStatus(t) }),
-          CropBeautyEngine.initBeautyFromFile(beautyFile, { wasmBase: WASM_BASE, onStatus: t => setStatus(t) }),
-        ]);
-        cropReady = true; beautyReady = true;
-        setStatus('SC JX，QQDSXT', 'ready');
-        updateControls();
       } catch (err) {
-        setStatus('SC JZSB' + (err.message || err), 'error');
+        setStatus(`${type} MX JZSB: ` + (err.message || err), 'error');
       }
     }
 
