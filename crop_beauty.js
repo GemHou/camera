@@ -26,16 +26,27 @@ async function loadCbModel(url, onStatus) {
   }
 }
 
+async function tryLoadModel(first, fallback, onStatus) {
+  try {
+    return await loadCbModel(first, onStatus);
+  } catch (e) {
+    console.warn('int8 SB, try fp32:', e);
+    return await loadCbModel(fallback, onStatus);
+  }
+}
+
 async function initCropModel({ wasmBase, modelUrl, onStatus }) {
   configureCbOrt(wasmBase);
+  const i8 = modelUrl.replace('.onnx', '_int8.onnx');
   onStatus?.('JZCQMX…');
-  cropSession = await loadCbModel(modelUrl, onStatus);
+  cropSession = await tryLoadModel(i8, modelUrl, onStatus);
   onStatus?.('CQMXJX');
 }
 
 async function initBeautyModel({ wasmBase, modelUrl, onStatus }) {
+  const i8 = modelUrl.replace('.onnx', '_int8.onnx');
   onStatus?.('JZMXMX…');
-  beautySession = await loadCbModel(modelUrl, onStatus);
+  beautySession = await tryLoadModel(i8, modelUrl, onStatus);
   onStatus?.('MXMXJX');
 }
 
