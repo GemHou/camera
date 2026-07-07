@@ -116,14 +116,15 @@ async function initCropModel({ wasmBase, modelUrl, onStatus }) {
   const f32key = CACHE_KEY + '_crop_fp32';
 
   onStatus?.('JZCQMX…');
-  let buf;
-  try { buf = await loadModelWithCache(i8url, i8key, onStatus); }
-  catch (e) {
-    console.warn('INT8 XZSB:', e);
+  try {
+    const buf = await loadModelWithCache(i8url, i8key, onStatus);
+    cropSession = await createSessionFromBuffer(buf, onStatus);
+  } catch (e) {
+    console.warn('INT8 SB:', e);
     onStatus?.('INT8 SB, JZ FP32…');
-    buf = await loadModelWithCache(modelUrl, f32key, onStatus);
+    const buf = await loadModelWithCache(modelUrl, f32key, onStatus);
+    cropSession = await createSessionFromBuffer(buf, onStatus);
   }
-  cropSession = await createSessionFromBuffer(buf, onStatus);
   onStatus?.('CQMXJX');
 }
 
@@ -133,14 +134,15 @@ async function initBeautyModel({ wasmBase, modelUrl, onStatus }) {
   const f32key = CACHE_KEY + '_beauty_fp32';
 
   onStatus?.('JZMXMX…');
-  let buf;
-  try { buf = await loadModelWithCache(i8url, i8key, onStatus); }
-  catch (e) {
-    console.warn('INT8 XZSB:', e);
+  try {
+    const buf = await loadModelWithCache(i8url, i8key, onStatus);
+    beautySession = await createSessionFromBuffer(buf, onStatus);
+  } catch (e) {
+    console.warn('INT8 SB:', e);
     onStatus?.('INT8 SB, JZ FP32…');
-    buf = await loadModelWithCache(modelUrl, f32key, onStatus);
+    const buf = await loadModelWithCache(modelUrl, f32key, onStatus);
+    beautySession = await createSessionFromBuffer(buf, onStatus);
   }
-  beautySession = await createSessionFromBuffer(buf, onStatus);
   onStatus?.('MXMXJX');
 }
 
