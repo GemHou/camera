@@ -71,10 +71,8 @@
   <script>
     const WASM_BASE = new URL('vendor/onnxruntime-web/', window.location.href).href;
     const AUTO_INTERVAL_MS = 1500;
-    const MODEL_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
-      ? 'models' : 'https://raw.githubusercontent.com/GemHou/camera/main/models';
-    const CROP_MODEL_URL = MODEL_BASE + '/crop_model.onnx';
-    const BEAUTY_MODEL_URL = MODEL_BASE + '/beauty_score.onnx';
+    const CROP_MODEL_URL = 'models/crop_model.onnx';
+    const BEAUTY_MODEL_URL = 'models/beauty_score.onnx';
 
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');

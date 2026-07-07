@@ -7,7 +7,7 @@ const BEAUTY_INPUT = { w: 480, h: 270 };
 
 const DB_NAME = 'camera-cb-cache';
 const DB_STORE = 'models';
-const CACHE_KEY = 'cb_models_v1';
+const CACHE_KEY = 'cb_models_v2';
 
 let cropSession = null;
 let beautySession = null;
@@ -111,37 +111,27 @@ async function createSessionFromBuffer(buf, onStatus) {
 
 async function initCropModel({ wasmBase, modelUrl, onStatus }) {
   configureCbOrt(wasmBase);
-  const i8url = modelUrl.replace('.onnx', '_int8.onnx');
-  const i8key = CACHE_KEY + '_crop_int8';
-  const f32key = CACHE_KEY + '_crop_fp32';
-
   onStatus?.('JZCQMX…');
+  const key = CACHE_KEY + '_crop';
   try {
-    const buf = await loadModelWithCache(i8url, i8key, onStatus);
+    const buf = await loadModelWithCache(modelUrl, key, onStatus);
     cropSession = await createSessionFromBuffer(buf, onStatus);
   } catch (e) {
-    console.warn('INT8 SB:', e);
-    onStatus?.('INT8 SB, JZ FP32…');
-    const buf = await loadModelWithCache(modelUrl, f32key, onStatus);
-    cropSession = await createSessionFromBuffer(buf, onStatus);
+    console.error('Crop MX JZSB:', e);
+    throw e;
   }
   onStatus?.('CQMXJX');
 }
 
 async function initBeautyModel({ wasmBase, modelUrl, onStatus }) {
-  const i8url = modelUrl.replace('.onnx', '_int8.onnx');
-  const i8key = CACHE_KEY + '_beauty_int8';
-  const f32key = CACHE_KEY + '_beauty_fp32';
-
   onStatus?.('JZMXMX…');
+  const key = CACHE_KEY + '_beauty';
   try {
-    const buf = await loadModelWithCache(i8url, i8key, onStatus);
+    const buf = await loadModelWithCache(modelUrl, key, onStatus);
     beautySession = await createSessionFromBuffer(buf, onStatus);
   } catch (e) {
-    console.warn('INT8 SB:', e);
-    onStatus?.('INT8 SB, JZ FP32…');
-    const buf = await loadModelWithCache(modelUrl, f32key, onStatus);
-    beautySession = await createSessionFromBuffer(buf, onStatus);
+    console.error('Beauty MX JZSB:', e);
+    throw e;
   }
   onStatus?.('MXMXJX');
 }
