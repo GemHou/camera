@@ -3,226 +3,94 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Camera + DA2 Depth + Crop + Beauty</title>
-
+  <title>SXT + CQ + MX</title>
   <style>
     * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      background: #0a0a0a;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-      color: #eee;
-      font-family: Arial, sans-serif;
-      padding: 16px;
-    }
-
+    body { margin: 0; background: #0a0a0a; display: flex; flex-direction: column; align-items: center; min-height: 100vh; color: #eee; font-family: Arial, sans-serif; padding: 16px; }
     h2 { margin: 8px 0; }
-
-    #status {
-      min-height: 1.4em;
-      font-size: 14px;
-      color: #aaa;
-      margin-bottom: 12px;
-      text-align: center;
-    }
-
+    #status { min-height: 1.4em; font-size: 14px; color: #aaa; margin-bottom: 12px; text-align: center; }
     #status.busy { color: #ffb347; }
     #status.ready { color: #7dffb3; }
     #status.error { color: #ff6b6b; }
-
-    .preview-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      justify-content: center;
-      width: 100%;
-      max-width: 1200px;
-    }
-
-    .panel {
-      flex: 1 1 320px;
-      max-width: 580px;
-    }
-
-    .panel label {
-      display: block;
-      font-size: 13px;
-      color: #888;
-      margin-bottom: 6px;
-    }
-
-    video, canvas {
-      width: 100%;
-      border-radius: 12px;
-      background: #111;
-      display: block;
-    }
-
-    canvas.processing {
-      opacity: 0.55;
-      filter: grayscale(0.2);
-    }
-
-    /* camera overlay: video normal flow, bbox canvas on top */
-    .cam-wrapper {
-      position: relative;
-    }
-    .cam-wrapper video {
-      display: block;
-      width: 100%;
-    }
-    .cam-wrapper canvas {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      background: transparent;
-    }
-
-    .controls {
-      margin-top: 16px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: center;
-    }
-
-    button {
-      padding: 10px 18px;
-      font-size: 15px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      background: #2a2a2a;
-      color: #fff;
-    }
-
+    .panel { max-width: 580px; margin: 0 auto; }
+    .panel label { display: block; font-size: 13px; color: #888; margin-bottom: 6px; }
+    .cam-wrapper { position: relative; }
+    .cam-wrapper video { display: block; width: 100%; border-radius: 12px; background: #111; }
+    .cam-wrapper canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; background: transparent; border-radius: 12px; }
+    .controls { margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    button { padding: 10px 18px; font-size: 15px; border: none; border-radius: 8px; cursor: pointer; background: #2a2a2a; color: #fff; }
     button:hover:not(:disabled) { background: #3a3a3a; }
-
     button.primary { background: #2563eb; }
     button.primary:hover:not(:disabled) { background: #1d4ed8; }
-
     button.active { background: #059669; }
-
-    button:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
-
-    .scores {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 6px;
-      margin-top: 8px;
-    }
-    .score-item {
-      background: #1a1a2e;
-      border-radius: 8px;
-      padding: 6px 8px;
-      text-align: center;
-    }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .scores { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 8px; }
+    .score-item { background: #1a1a2e; border-radius: 8px; padding: 6px 8px; text-align: center; }
     .score-label { font-size: 11px; color: #888; }
     .score-value { font-size: 16px; font-weight: bold; color: #e94560; }
     .score-value.high { color: #4CAF50; }
     .score-value.mid { color: #FF9800; }
-
-    .hint {
-      margin-top: 14px;
-      font-size: 12px;
-      color: #666;
-      text-align: center;
-      max-width: 640px;
-      line-height: 1.5;
-    }
+    .hint { margin-top: 14px; font-size: 12px; color: #666; text-align: center; max-width: 640px; line-height: 1.5; }
   </style>
 </head>
-
 <body>
-
-  <h2>📷 SXT + DA2 SD + CQ + MX</h2>
+  <h2>SXT + CQ + MX</h2>
   <div id="status">ZZCSH…</div>
 
-  <div class="preview-row">
-    <div class="panel">
-      <label>SXT</label>
-      <div class="cam-wrapper">
-        <video id="video" autoplay playsinline muted></video>
-        <canvas id="bboxCanvas"></canvas>
-      </div>
-      <div class="scores" id="scoreBoard">
-        <div class="score-item"><div class="score-label">ZH</div><div class="score-value" id="s-total">-</div></div>
-        <div class="score-item"><div class="score-label">YS</div><div class="score-value" id="s-element">-</div></div>
-        <div class="score-item"><div class="score-label">GS</div><div class="score-value" id="s-story">-</div></div>
-        <div class="score-item"><div class="score-label">GT</div><div class="score-value" id="s-composition">-</div></div>
-        <div class="score-item"><div class="score-label">GY</div><div class="score-value" id="s-light">-</div></div>
-        <div class="score-item"><div class="score-label">FW</div><div class="score-value" id="s-atmosphere">-</div></div>
-      </div>
+  <div class="panel">
+    <label>SXT</label>
+    <div class="cam-wrapper">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="bboxCanvas"></canvas>
     </div>
-    <div class="panel">
-      <label>SDT（Depth Anything V2 Small）</label>
-      <canvas id="depthCanvas"></canvas>
+    <div class="scores" id="scoreBoard">
+      <div class="score-item"><div class="score-label">ZH</div><div class="score-value" id="s-total">-</div></div>
+      <div class="score-item"><div class="score-label">YS</div><div class="score-value" id="s-element">-</div></div>
+      <div class="score-item"><div class="score-label">GS</div><div class="score-value" id="s-story">-</div></div>
+      <div class="score-item"><div class="score-label">GT</div><div class="score-value" id="s-composition">-</div></div>
+      <div class="score-item"><div class="score-label">GY</div><div class="score-value" id="s-light">-</div></div>
+      <div class="score-item"><div class="score-label">FW</div><div class="score-value" id="s-atmosphere">-</div></div>
     </div>
   </div>
 
   <div class="controls">
     <button onclick="startCamera()">QDSXT</button>
     <button id="captureBtn" onclick="takePhoto()" disabled>PZBC</button>
-    <button id="depthBtn" onclick="estimateDepthOnce()" disabled>SDGS</button>
-    <button id="autoDepthBtn" onclick="toggleAutoDepth()" disabled>SDZD：G</button>
     <button id="cbBtn" class="primary" onclick="runCropBeauty()" disabled>CQ+MX</button>
-    <button id="autoCbBtn" onclick="toggleAutoCb()" disabled>MXZD：G</button>
-    <button id="allBtn" onclick="runAll()" disabled>QCTL</button>
-    <button id="autoAllBtn" onclick="toggleAutoAll()" disabled>QZD：G</button>
+    <button id="autoCbBtn" onclick="toggleAuto()" disabled>ZDSX：G</button>
   </div>
 
   <p class="hint">
-    TLZLLQBDYX（WASM）。CQ+XM XEWXZY 92 MB MX（SC）。
-    ZDMS ASZWC + 1.5 MJL。QY <code>python serve.py</code> QD。
+    TLZLLQBDYX（WASM）。CQ+MX XZYX 24 MB MX（INT8，SCXZ）。
+    ZDMS ASZWC + 1.5 s JL。QY <code>python serve.py</code> QD。
   </p>
 
   <canvas id="canvas" hidden></canvas>
 
   <script src="vendor/onnxruntime-web/ort.wasm.min.js?v=5"></script>
-  <script src="depth.js?v=5"></script>
-  <script src="crop_beauty.js?v=1"></script>
+  <script src="crop_beauty.js?v=2"></script>
   <script>
     const WASM_BASE = new URL('vendor/onnxruntime-web/', window.location.href).href;
     const AUTO_INTERVAL_MS = 1500;
-    const RUNTIME_CONFIG_URL = 'models/runtime_config.json';
     const CROP_MODEL_URL = 'models/crop_model.onnx';
     const BEAUTY_MODEL_URL = 'models/beauty_score.onnx';
 
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
-    const depthCanvas = document.getElementById('depthCanvas');
-    const depthCtx = depthCanvas.getContext('2d');
     const bboxCanvas = document.getElementById('bboxCanvas');
     const bboxCtx = bboxCanvas.getContext('2d');
     const statusEl = document.getElementById('status');
     const captureBtn = document.getElementById('captureBtn');
-    const depthBtn = document.getElementById('depthBtn');
-    const autoDepthBtn = document.getElementById('autoDepthBtn');
     const cbBtn = document.getElementById('cbBtn');
     const autoCbBtn = document.getElementById('autoCbBtn');
-    const allBtn = document.getElementById('allBtn');
-    const autoAllBtn = document.getElementById('autoAllBtn');
 
     const SCORE_KEYS = ['total','element','story','composition','light','atmosphere'];
 
-    let depthReady = false;
     let cropReady = false;
     let beautyReady = false;
     let inferring = false;
-    let autoDepth = false, autoDepthTimer = null;
-    let autoCb = false, autoCbTimer = null;
-    let autoAll = false, autoAllTimer = null;
-
-    let lastBbox = null;
+    let autoMode = false;
+    let autoTimer = null;
 
     function setStatus(text, kind = '') {
       statusEl.textContent = text; statusEl.className = kind;
@@ -250,76 +118,51 @@
       bboxCtx.strokeRect(bx, by, bw, bh);
     }
 
-    function updateAllControls() {
+    function updateControls() {
       const camOn = !!video.srcObject;
-      depthBtn.disabled = !(depthReady && camOn && !inferring);
-      autoDepthBtn.disabled = !(depthReady && camOn);
       cbBtn.disabled = !(cropReady && beautyReady && camOn && !inferring);
       autoCbBtn.disabled = !(cropReady && beautyReady && camOn);
-      allBtn.disabled = !(depthReady && cropReady && beautyReady && camOn && !inferring);
-      autoAllBtn.disabled = !(depthReady && cropReady && beautyReady && camOn);
     }
 
-    async function initDepth() {
+    async function init() {
       if (location.protocol === 'file:') {
-        setStatus('QY http://127.0.0.1:8080 DKYM', 'error');
+        setStatus('QY http://127.0.0.1:8080 DK', 'error');
         return;
       }
       if (typeof ort === 'undefined') {
         setStatus('ONNX Runtime WJZ', 'error');
         return;
       }
+      setStatus('XZMX…');
       try {
-        const rc = await DepthEngine.loadRuntimeConfig(RUNTIME_CONFIG_URL);
-        const mu = rc?.modelUrl || 'models/depth_anything_v2_small.onnx';
-        const { numThreads, inputSize } = await DepthEngine.initDepthModel({
-          modelUrl: mu, wasmBase: WASM_BASE, runtimeConfig: rc,
-          onStatus: (t) => setStatus(t),
-        });
-        depthReady = true;
-        setStatus('SDMXJX，JZCQ+MXMX…', 'ready');
-        updateAllControls();
-
-        // load crop + beauty models in parallel
         await Promise.all([
-          CropBeautyEngine.initCropModel({ wasmBase: WASM_BASE, modelUrl: CROP_MODEL_URL,
-            onStatus: (t) => setStatus(t) }),
-          CropBeautyEngine.initBeautyModel({ wasmBase: WASM_BASE, modelUrl: BEAUTY_MODEL_URL,
-            onStatus: (t) => setStatus(t) }),
+          CropBeautyEngine.initCropModel({ wasmBase: WASM_BASE, modelUrl: CROP_MODEL_URL, onStatus: t => setStatus(t) }),
+          CropBeautyEngine.initBeautyModel({ wasmBase: WASM_BASE, modelUrl: BEAUTY_MODEL_URL, onStatus: t => setStatus(t) }),
         ]);
         cropReady = true; beautyReady = true;
-        const threadHint = numThreads > 1 ? `（${numThreads}XC）` : '（DXC）';
-        setStatus(`QBMXJX ${inputSize}px${threadHint}，QQDSXT`, 'ready');
-        updateAllControls();
+        setStatus('MXJX，QQDSXT', 'ready');
+        updateControls();
       } catch (err) {
         console.error(err);
-        setStatus('JZSB：' + (err.message || err), 'error');
+        setStatus('JZSB' + (err.message || err), 'error');
       }
     }
 
     async function startCamera() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' }, audio: false
-        });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
         video.srcObject = stream;
         await video.play();
-
-        depthCanvas.width = video.videoWidth || 640;
-        depthCanvas.height = video.videoHeight || 480;
-        depthCtx.fillStyle = '#111';
-        depthCtx.fillRect(0, 0, depthCanvas.width, depthCanvas.height);
-
         captureBtn.disabled = false;
-        updateAllControls();
+        updateControls();
         setStatus('JX', 'ready');
       } catch (err) {
-        alert('SXTQDSB：' + err);
+        alert('SXTQDSB' + err);
       }
     }
 
     function takePhoto() {
-      if (!video.srcObject) { alert('QXQDSXT'); return; }
+      if (!video.srcObject) { alert('QQXQDSXT'); return; }
       canvas.width = video.videoWidth; canvas.height = video.videoHeight;
       canvas.getContext('2d').drawImage(video, 0, 0);
       canvas.toBlob((blob) => {
@@ -330,136 +173,46 @@
       }, 'image/jpeg', 0.92);
     }
 
-    // ── Depth ──
-    async function runDepthInference() {
-      if (!depthReady || !video.srcObject || inferring) return;
-      inferring = true;
-      depthCanvas.classList.add('processing');
-      setStatus('SDTLZ…', 'busy');
-      updateAllControls();
-      try {
-        const r = await DepthEngine.inferDepthFromVideo(video);
-        depthCanvas.width = r.width; depthCanvas.height = r.height;
-        depthCtx.putImageData(r.imageData, 0, 0);
-        setStatus(`SD ${r.elapsedMs.toFixed(0)} ms`, 'ready');
-      } catch (err) {
-        setStatus('SDSB：' + (err.message || err), 'error');
-      } finally {
-        inferring = false;
-        depthCanvas.classList.remove('processing');
-        updateAllControls();
-        scheduleAutoDepth();
-        scheduleAutoAll();
-      }
-    }
-    function estimateDepthOnce() { stopAllAutoExcept('depth'); runDepthInference(); }
-    function toggleAutoDepth() {
-      autoDepth = !autoDepth;
-      autoDepthBtn.textContent = autoDepth ? 'SDZD：K' : 'SDZD：G';
-      autoDepthBtn.classList.toggle('active', autoDepth);
-      if (autoDepth) scheduleAutoDepth(true); else { clearTimeout(autoDepthTimer); autoDepthTimer = null; }
-    }
-    function scheduleAutoDepth(immediate) {
-      if (!autoDepth) return;
-      clearTimeout(autoDepthTimer);
-      autoDepthTimer = setTimeout(() => { if (!inferring) runDepthInference(); }, immediate ? 0 : AUTO_INTERVAL_MS);
-    }
-
-    // ── Crop + Beauty ──
     async function runCropBeauty() {
       if (!cropReady || !beautyReady || !video.srcObject || inferring) return;
       inferring = true;
-      setStatus('CQ+XMTLZ…', 'busy');
-      updateAllControls();
+      setStatus('TLZ…', 'busy');
+      updateControls();
       try {
         const r = await CropBeautyEngine.runCropAndBeauty(video);
-        lastBbox = r.bbox;
         drawBbox(r.bbox);
         updateScoreDisplay(r);
-        setStatus(`CQ ${r.cropMs.toFixed(0)} ms + MX ${r.beautyMs.toFixed(0)} ms`, 'ready');
+        setStatus(`CQ ${r.cropMs.toFixed(0)}ms MX ${r.beautyMs.toFixed(0)}ms`, 'ready');
       } catch (err) {
-        setStatus('CQ+MXSB：' + (err.message || err), 'error');
+        setStatus('TLSB' + (err.message || err), 'error');
       } finally {
         inferring = false;
-        updateAllControls();
-        scheduleAutoCb();
-        scheduleAutoAll();
+        updateControls();
+        scheduleAuto();
       }
     }
-    function toggleAutoCb() {
-      autoCb = !autoCb;
-      autoCbBtn.textContent = autoCb ? 'MXZD：K' : 'MXZD：G';
-      autoCbBtn.classList.toggle('active', autoCb);
-      if (autoCb) scheduleAutoCb(true); else { clearTimeout(autoCbTimer); autoCbTimer = null; }
-    }
-    function scheduleAutoCb(immediate) {
-      if (!autoCb) return;
-      clearTimeout(autoCbTimer);
-      autoCbTimer = setTimeout(() => { if (!inferring) runCropBeauty(); }, immediate ? 0 : AUTO_INTERVAL_MS);
+
+    function toggleAuto() {
+      autoMode = !autoMode;
+      autoCbBtn.textContent = autoMode ? 'ZDSX：K' : 'ZDSX：G';
+      autoCbBtn.classList.toggle('active', autoMode);
+      if (autoMode) scheduleAuto(true);
+      else { clearTimeout(autoTimer); autoTimer = null; }
     }
 
-    // ── All ──
-    async function runAll() {
-      if (!depthReady || !cropReady || !beautyReady || !video.srcObject || inferring) return;
-      inferring = true;
-      depthCanvas.classList.add('processing');
-      setStatus('QCTLZ…', 'busy');
-      updateAllControls();
-      try {
-        const [depthR, cbR] = await Promise.all([
-          DepthEngine.inferDepthFromVideo(video).catch(e => ({ error: e })),
-          CropBeautyEngine.runCropAndBeauty(video).catch(e => ({ error: e })),
-        ]);
-        if (depthR.imageData) {
-          depthCanvas.width = depthR.width; depthCanvas.height = depthR.height;
-          depthCtx.putImageData(depthR.imageData, 0, 0);
-        }
-        if (cbR.bbox) {
-          lastBbox = cbR.bbox;
-          drawBbox(cbR.bbox);
-          updateScoreDisplay(cbR);
-          setStatus(`SD ${depthR.elapsedMs?.toFixed(0)||'?'} ms / CQ ${cbR.cropMs?.toFixed(0)||'?'} ms / MX ${cbR.beautyMs?.toFixed(0)||'?'} ms`, 'ready');
-        } else {
-          setStatus('SDJX，CQ+XMSB', 'ready');
-        }
-      } catch (err) {
-        setStatus('QCTLSB：' + (err.message || err), 'error');
-      } finally {
-        inferring = false;
-        depthCanvas.classList.remove('processing');
-        updateAllControls();
-        scheduleAutoAll();
-      }
-    }
-    function toggleAutoAll() {
-      autoAll = !autoAll;
-      autoAllBtn.textContent = autoAll ? 'QZD：K' : 'QZD：G';
-      autoAllBtn.classList.toggle('active', autoAll);
-      if (autoAll) scheduleAutoAll(true); else { clearTimeout(autoAllTimer); autoAllTimer = null; }
-    }
-    function scheduleAutoAll(immediate) {
-      if (!autoAll) return;
-      clearTimeout(autoAllTimer);
-      autoAllTimer = setTimeout(() => { if (!inferring) runAll(); }, immediate ? 0 : AUTO_INTERVAL_MS);
-    }
-
-    function stopAllAutoExcept(keep) {
-      if (keep !== 'depth') { autoDepth = false; autoDepthBtn.textContent = 'SDZD：G'; autoDepthBtn.classList.remove('active'); clearTimeout(autoDepthTimer); autoDepthTimer = null; }
-      if (keep !== 'cb') { autoCb = false; autoCbBtn.textContent = 'MXZD：G'; autoCbBtn.classList.remove('active'); clearTimeout(autoCbTimer); autoCbTimer = null; }
-      if (keep !== 'all') { autoAll = false; autoAllBtn.textContent = 'QZD：G'; autoAllBtn.classList.remove('active'); clearTimeout(autoAllTimer); autoAllTimer = null; }
+    function scheduleAuto(immediate = false) {
+      if (!autoMode) return;
+      clearTimeout(autoTimer);
+      autoTimer = setTimeout(() => { if (!inferring) runCropBeauty(); }, immediate ? 0 : AUTO_INTERVAL_MS);
     }
 
     video.addEventListener('loadedmetadata', () => {
       if (video.videoWidth && video.videoHeight) {
-        depthCanvas.width = video.videoWidth; depthCanvas.height = video.videoHeight;
         bboxCanvas.width = video.videoWidth; bboxCanvas.height = video.videoHeight;
-        depthCtx.fillStyle = '#111';
-        depthCtx.fillRect(0, 0, depthCanvas.width, depthCanvas.height);
       }
     });
 
-    initDepth();
+    init();
   </script>
-
 </body>
 </html>
