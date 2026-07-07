@@ -123,6 +123,24 @@ async function initCropModel({ wasmBase, modelUrl, onStatus }) {
   onStatus?.('CQMXJX');
 }
 
+async function initCropFromFile(file, { wasmBase, onStatus }) {
+  configureCbOrt(wasmBase);
+  onStatus?.('JZ CQ MX…');
+  const buf = await file.arrayBuffer();
+  await saveCache(CACHE_KEY + '_crop', buf);
+  cropSession = await createSessionFromBuffer(buf, onStatus);
+  onStatus?.('CQMXJX');
+}
+
+async function initBeautyFromFile(file, { wasmBase, onStatus }) {
+  configureCbOrt(wasmBase);
+  onStatus?.('JZ Beauty MX…');
+  const buf = await file.arrayBuffer();
+  await saveCache(CACHE_KEY + '_beauty', buf);
+  beautySession = await createSessionFromBuffer(buf, onStatus);
+  onStatus?.('MXMXJX');
+}
+
 async function initBeautyModel({ wasmBase, modelUrl, onStatus }) {
   onStatus?.('JZMXMX…');
   const key = CACHE_KEY + '_beauty';
@@ -200,4 +218,4 @@ async function runCropAndBeauty(video) {
   };
 }
 
-window.CropBeautyEngine = { initCropModel, initBeautyModel, runCropAndBeauty };
+window.CropBeautyEngine = { initCropModel, initBeautyModel, initCropFromFile, initBeautyFromFile, runCropAndBeauty };

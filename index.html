@@ -58,10 +58,12 @@
     <button id="captureBtn" onclick="takePhoto()" disabled>PZBC</button>
     <button id="cbBtn" class="primary" onclick="runCropBeauty()" disabled>CQ+MX</button>
     <button id="autoCbBtn" onclick="toggleAuto()" disabled>ZDSX：G</button>
+    <button onclick="document.getElementById('fileInput').click()">SC MX WJ</button>
+    <input id="fileInput" type="file" accept=".onnx" multiple style="display:none" onchange="handleFileUpload(event)">
   </div>
 
   <p class="hint">
-    TLZLLQBDYX（WASM）。CQ+MX YXZ 24 MB（INT8）+ 92 MB（FP32）。
+    TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
 
   <canvas id="canvas" hidden></canvas>
@@ -71,12 +73,7 @@
   <script>
     const WASM_BASE = new URL('vendor/onnxruntime-web/', window.location.href).href;
     const AUTO_INTERVAL_MS = 1500;
-    const host = window.location.hostname;
-    const MODEL_BASE = host === '127.0.0.1' || host === 'localhost'
-      ? 'models'
-      : host.includes('gitee')
-        ? 'https://gitee.com/haidonghu/camera/raw/main/models'
-        : 'models';
+    const MODEL_BASE = 'models';
     const CROP_MODEL_URL = MODEL_BASE + '/crop_model.onnx';
     const BEAUTY_MODEL_URL = MODEL_BASE + '/beauty_score.onnx';
 
@@ -138,7 +135,7 @@
         setStatus('ONNX Runtime WJZ', 'error');
         return;
       }
-      setStatus('XZMX…');
+      setStatus('XZMX…（HRSC WJ）');
       try {
         await Promise.all([
           CropBeautyEngine.initCropModel({ wasmBase: WASM_BASE, modelUrl: CROP_MODEL_URL, onStatus: t => setStatus(t) }),
@@ -149,7 +146,30 @@
         updateControls();
       } catch (err) {
         console.error(err);
-        setStatus('JZSB' + (err.message || err), 'error');
+        setStatus('WLXZSB，QSC .onnx WJ', 'error');
+      }
+    }
+
+    async function handleFileUpload(event) {
+      const files = event.target.files;
+      if (!files.length) return;
+      setStatus('JZSC WJMX…', 'busy');
+      try {
+        const cropFile = Array.from(files).find(f => f.name.includes('crop'));
+        const beautyFile = Array.from(files).find(f => f.name.includes('beauty'));
+        if (!cropFile || !beautyFile) {
+          setStatus('QXZ CS crop  MX HD beauty MX .onnx WJ', 'error');
+          return;
+        }
+        await Promise.all([
+          CropBeautyEngine.initCropFromFile(cropFile, { wasmBase: WASM_BASE, onStatus: t => setStatus(t) }),
+          CropBeautyEngine.initBeautyFromFile(beautyFile, { wasmBase: WASM_BASE, onStatus: t => setStatus(t) }),
+        ]);
+        cropReady = true; beautyReady = true;
+        setStatus('SC JX，QQDSXT', 'ready');
+        updateControls();
+      } catch (err) {
+        setStatus('SC JZSB' + (err.message || err), 'error');
       }
     }
 
