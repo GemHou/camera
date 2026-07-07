@@ -26,33 +26,23 @@ async function loadCbModel(url, onStatus) {
   }
 }
 
-async function initCropModel({ wasmBase, modelUrl, modelBase, onStatus }) {
+async function initCropModel({ wasmBase, modelUrl, fp32Base, onStatus }) {
   configureCbOrt(wasmBase);
-  // try: INT8 from Pages → FP32 from R2 (or local)
-  const pagesUrl = modelUrl;  // relative to site root (CF Pages or local)
-  const r2Url = modelBase ? modelBase + '/' + modelUrl.split('/').pop() : modelUrl;
-  const i8Url = pagesUrl.replace('.onnx', '_int8.onnx');
+  // try: INT8 from Pages → FP32 from Releases (or local)
+  const i8Url = modelUrl.replace('.onnx', '_int8.onnx');
+  const f32Url = fp32Base ? fp32Base + '/' + modelUrl.split('/').pop() : modelUrl;
   onStatus?.('JZCQMX…');
-  try {
-    cropSession = await loadCbModel(i8Url, onStatus);
-  } catch (e) {
-    console.warn('INT8 SB, try R2/FP32:', e);
-    cropSession = await loadCbModel(r2Url, onStatus);
-  }
+  try { cropSession = await loadCbModel(i8Url, onStatus); }
+  catch (e) { console.warn('INT8 SB, try FP32:', e); cropSession = await loadCbModel(f32Url, onStatus); }
   onStatus?.('CQMXJX');
 }
 
-async function initBeautyModel({ wasmBase, modelUrl, modelBase, onStatus }) {
-  const pagesUrl = modelUrl;
-  const r2Url = modelBase ? modelBase + '/' + modelUrl.split('/').pop() : modelUrl;
-  const i8Url = pagesUrl.replace('.onnx', '_int8.onnx');
+async function initBeautyModel({ wasmBase, modelUrl, fp32Base, onStatus }) {
+  const i8Url = modelUrl.replace('.onnx', '_int8.onnx');
+  const f32Url = fp32Base ? fp32Base + '/' + modelUrl.split('/').pop() : modelUrl;
   onStatus?.('JZMXMX…');
-  try {
-    beautySession = await loadCbModel(i8Url, onStatus);
-  } catch (e) {
-    console.warn('INT8 SB, try R2/FP32:', e);
-    beautySession = await loadCbModel(r2Url, onStatus);
-  }
+  try { beautySession = await loadCbModel(i8Url, onStatus); }
+  catch (e) { console.warn('INT8 SB, try FP32:', e); beautySession = await loadCbModel(f32Url, onStatus); }
   onStatus?.('MXMXJX');
 }
 
