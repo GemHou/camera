@@ -72,8 +72,11 @@
   <script>
     const WASM_BASE = new URL('vendor/onnxruntime-web/', window.location.href).href;
     const AUTO_INTERVAL_MS = 1500;
-    const CROP_MODEL_URL = 'models/crop_model.onnx';
-    const BEAUTY_MODEL_URL = 'models/beauty_score.onnx';
+    // MXYX URL: local for dev, R2 for CF Pages (FP32, CF Pages 25MB limit)
+    const MODEL_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+      ? '' : 'https://pub-b8c1f6c1a2b847d3bbc55cf624845e00.r2.dev';
+    const CROP_MODEL_URL = (MODEL_BASE || 'models') + '/crop_model.onnx';
+    const BEAUTY_MODEL_URL = (MODEL_BASE || 'models') + '/beauty_score.onnx';
 
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
@@ -136,8 +139,8 @@
       setStatus('XZMX…');
       try {
         await Promise.all([
-          CropBeautyEngine.initCropModel({ wasmBase: WASM_BASE, modelUrl: CROP_MODEL_URL, onStatus: t => setStatus(t) }),
-          CropBeautyEngine.initBeautyModel({ wasmBase: WASM_BASE, modelUrl: BEAUTY_MODEL_URL, onStatus: t => setStatus(t) }),
+          CropBeautyEngine.initCropModel({ wasmBase: WASM_BASE, modelUrl: CROP_MODEL_URL, modelBase: MODEL_BASE, onStatus: t => setStatus(t) }),
+          CropBeautyEngine.initBeautyModel({ wasmBase: WASM_BASE, modelUrl: BEAUTY_MODEL_URL, modelBase: MODEL_BASE, onStatus: t => setStatus(t) }),
         ]);
         cropReady = true; beautyReady = true;
         setStatus('MXJX，QQDSXT', 'ready');
