@@ -61,8 +61,7 @@
   </div>
 
   <p class="hint">
-    TLZLLQBDYX（WASM）。CQ+MX XZYX 24 MB MX（INT8，SCXZ）。
-    ZDMS ASZWC + 1.5 s JL。QY <code>python serve.py</code> QD。
+    TLZLLQBDYX（WASM）。CQ+MX YXZ 24 MB（INT8）+ 92 MB（FP32）。
   </p>
 
   <canvas id="canvas" hidden></canvas>
@@ -72,8 +71,6 @@
   <script>
     const WASM_BASE = new URL('vendor/onnxruntime-web/', window.location.href).href;
     const AUTO_INTERVAL_MS = 1500;
-    const FP32_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
-      ? '' : 'https://github.com/GemHou/camera/releases/download/v1.0';
     const CROP_MODEL_URL = 'models/crop_model.onnx';
     const BEAUTY_MODEL_URL = 'models/beauty_score.onnx';
 
@@ -138,8 +135,8 @@
       setStatus('XZMX…');
       try {
         await Promise.all([
-          CropBeautyEngine.initCropModel({ wasmBase: WASM_BASE, modelUrl: CROP_MODEL_URL, fp32Base: FP32_BASE, onStatus: t => setStatus(t) }),
-          CropBeautyEngine.initBeautyModel({ wasmBase: WASM_BASE, modelUrl: BEAUTY_MODEL_URL, fp32Base: FP32_BASE, onStatus: t => setStatus(t) }),
+          CropBeautyEngine.initCropModel({ wasmBase: WASM_BASE, modelUrl: CROP_MODEL_URL, onStatus: t => setStatus(t) }),
+          CropBeautyEngine.initBeautyModel({ wasmBase: WASM_BASE, modelUrl: BEAUTY_MODEL_URL, onStatus: t => setStatus(t) }),
         ]);
         cropReady = true; beautyReady = true;
         setStatus('MXJX，QQDSXT', 'ready');
