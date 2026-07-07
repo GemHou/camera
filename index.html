@@ -71,7 +71,7 @@
   <canvas id="canvas" hidden></canvas>
 
   <script src="vendor/onnxruntime-web/ort.wasm.min.js?v=5"></script>
-  <script src="crop_beauty.js?v=2"></script>
+  <script src="crop_beauty.js?v=3"></script>
   <script>
     const WASM_BASE = new URL('vendor/onnxruntime-web/', window.location.href).href;
     const AUTO_INTERVAL_MS = 1500;
@@ -134,8 +134,6 @@
         setStatus('ONNX Runtime WJZ', 'error');
         return;
       }
-      configureCbOrt(WASM_BASE);
-
       // Xian chang HC
       setStatus('JC BDHC…');
       const [cropBuf, beautyBuf] = await Promise.all([
