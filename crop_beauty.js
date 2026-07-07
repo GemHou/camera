@@ -18,7 +18,7 @@ function configureCbOrt(wasmBase) {
 
 async function loadCbModel(url, onStatus) {
   let seconds = 0;
-  const timer = setInterval(() => { seconds++; onStatus?.(`解析模型… ${seconds}s`); }, 1000);
+  const timer = setInterval(() => { seconds++; onStatus?.(`JXMX… ${seconds}s`); }, 1000);
   try {
     return await ort.InferenceSession.create(url, { executionProviders: ['wasm'] });
   } finally {
@@ -28,15 +28,15 @@ async function loadCbModel(url, onStatus) {
 
 async function initCropModel({ wasmBase, modelUrl, onStatus }) {
   configureCbOrt(wasmBase);
-  onStatus?.('加载裁切模型…');
+  onStatus?.('JZCQMX…');
   cropSession = await loadCbModel(modelUrl, onStatus);
-  onStatus?.('裁切模型就绪');
+  onStatus?.('CQMXJX');
 }
 
 async function initBeautyModel({ wasmBase, modelUrl, onStatus }) {
-  onStatus?.('加载美学模型…');
+  onStatus?.('JZMXMX…');
   beautySession = await loadCbModel(modelUrl, onStatus);
-  onStatus?.('美学模型就绪');
+  onStatus?.('MXMXJX');
 }
 
 function cbPreprocessFrame(video, targetW, targetH) {
@@ -94,7 +94,7 @@ function cbPreprocessCrop(video, bbox, targetW, targetH) {
 }
 
 async function runCropAndBeauty(video) {
-  if (!cropSession || !beautySession) throw new Error('模型尚未就绪');
+  if (!cropSession || !beautySession) throw new Error('MXWJJX');
 
   // Step 1: Crop inference
   const cropTensor = cbPreprocessFrame(video, CROP_INPUT.w, CROP_INPUT.h);

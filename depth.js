@@ -67,9 +67,9 @@ function formatProgress(loaded, total) {
   if (total > 0) {
     const pct = Math.min(100, Math.round((loaded / total) * 100));
     const totalMb = (total / 1024 / 1024).toFixed(1);
-    return `下载模型 ${pct}% (${loadedMb} / ${totalMb} MB)`;
+    return `XZMX ${pct}% (${loadedMb} / ${totalMb} MB)`;
   }
-  return `下载模型 ${loadedMb} MB…`;
+  return `XZMX ${loadedMb} MB…`;
 }
 
 function openModelDb() {
@@ -79,7 +79,7 @@ function openModelDb() {
       request.result.createObjectStore(DB_STORE);
     };
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error('IndexedDB 打开失败'));
+    request.onerror = () => reject(request.error || new Error('IndexedDB DKSB'));
   });
 }
 
@@ -107,22 +107,22 @@ async function saveCachedModel(buffer) {
       tx.onerror = () => reject(tx.error);
     });
   } catch (err) {
-    console.warn('模型缓存写入失败（不影响使用）:', err);
+    console.warn('MXHCXRSB（BYXSY）:', err);
   }
 }
 
 async function verifyWasmRuntime(wasmBase, onStatus) {
-  onStatus?.('检查 WASM 运行时…');
+  onStatus?.('JC WASM YXS…');
   const wasmUrl = new URL('ort-wasm-simd-threaded.wasm', wasmBase).href;
   const resp = await fetch(wasmUrl, { method: 'HEAD' });
   if (!resp.ok) {
-    throw new Error(`WASM 文件不可访问 (${resp.status}): ${wasmUrl}`);
+    throw new Error(`WASM WJBKFW (${resp.status}): ${wasmUrl}`);
   }
 
   const contentType = (resp.headers.get('content-type') || '').toLowerCase();
   if (!contentType.includes('wasm')) {
     throw new Error(
-      `WASM MIME 类型不正确（${contentType || 'unknown'}）。请运行 python serve.py`
+      `WASM MIME LXBZQ（${contentType || 'unknown'}）。QYX python serve.py`
     );
   }
 }
@@ -157,17 +157,17 @@ function downloadArrayBuffer(url, onProgress) {
         resolve(xhr.response);
         return;
       }
-      reject(new Error(`模型下载失败 (HTTP ${xhr.status})`));
+      reject(new Error(`MXXZSB (HTTP ${xhr.status})`));
     };
 
     xhr.onerror = () => {
       if (stallTimer) clearInterval(stallTimer);
-      reject(new Error('网络错误：请确认手机与电脑在同一 WiFi，并使用电脑局域网 IP 访问'));
+      reject(new Error('WLCW：QQRSJYDNTZ WiFi，BSYDNJYW IP FW'));
     };
 
     xhr.ontimeout = () => {
       if (stallTimer) clearInterval(stallTimer);
-      reject(new Error('下载超时，请重试'));
+      reject(new Error('XZCS，QZS'));
     };
 
     onProgress?.(0, 0, false);
@@ -179,15 +179,15 @@ function downloadArrayBuffer(url, onProgress) {
 async function fetchModelBuffer(modelUrl, onStatus) {
   const cached = await loadCachedModel();
   if (cached && cached.byteLength > 0) {
-    onStatus?.(`使用本地缓存 (${(cached.byteLength / 1024 / 1024).toFixed(1)} MB)`);
+    onStatus?.(`SYBDHC (${(cached.byteLength / 1024 / 1024).toFixed(1)} MB)`);
     return cached;
   }
 
-  onStatus?.('开始下载模型…');
+  onStatus?.('KSXZMX…');
 
   const buffer = await downloadArrayBuffer(modelUrl, (loaded, total, stalled) => {
     if (stalled && loaded > 0) {
-      onStatus?.(`${formatProgress(loaded, total)}（仍在传输，请稍候）`);
+      onStatus?.(`${formatProgress(loaded, total)}（RZCCS，QSH）`);
       return;
     }
     onStatus?.(formatProgress(loaded, total));
@@ -201,7 +201,7 @@ async function createSessionWithProgress(modelBuffer, onStatus) {
   let seconds = 0;
   const timer = setInterval(() => {
     seconds += 1;
-    onStatus?.(`解析 ONNX 模型… ${seconds}s`);
+    onStatus?.(`JX ONNX MX… ${seconds}s`);
   }, 1000);
 
   try {
@@ -215,7 +215,7 @@ async function createSessionWithProgress(modelBuffer, onStatus) {
 
 async function initDepthModel({ modelUrl, wasmBase, onStatus, runtimeConfig = null }) {
   if (typeof ort === 'undefined') {
-    throw new Error('ONNX Runtime 未加载：请确认 vendor/onnxruntime-web/ort.wasm.min.js 可访问');
+    throw new Error('ONNX Runtime WJZ：QQR vendor/onnxruntime-web/ort.wasm.min.js KFW');
   }
 
   if (runtimeConfig) {
@@ -227,16 +227,16 @@ async function initDepthModel({ modelUrl, wasmBase, onStatus, runtimeConfig = nu
   infernoLUT = buildInfernoLUT();
   const numThreads = configureOrt(wasmBase);
   const modeLabel = forceSingleThread
-    ? '单线程（1Hz 模式）'
+    ? 'DXC（1Hz MS）'
     : numThreads > 1
-      ? `${numThreads} 线程 WASM`
-      : '单线程 WASM';
-  onStatus?.(`加载 ${inputSize}×${inputSize} 模型，${modeLabel}`);
+      ? `${numThreads} XC WASM`
+      : 'DXC WASM';
+  onStatus?.(`JZ ${inputSize}×${inputSize} MX，${modeLabel}`);
   await verifyWasmRuntime(wasmBase, onStatus);
 
   const modelBuffer = await fetchModelBuffer(modelUrl, onStatus);
   session = await createSessionWithProgress(modelBuffer, onStatus);
-  onStatus?.('模型就绪');
+  onStatus?.('MXJX');
   return { session, numThreads, inputSize };
 }
 
@@ -244,7 +244,7 @@ function preprocessFromVideo(video) {
   const w = video.videoWidth;
   const h = video.videoHeight;
   if (!w || !h) {
-    throw new Error('视频尚未就绪');
+    throw new Error('SPWJJX');
   }
 
   const canvas = document.createElement('canvas');
@@ -302,7 +302,7 @@ function depthToImageData(depthData, outWidth, outHeight) {
 
 async function inferDepthFromVideo(video) {
   if (!session) {
-    throw new Error('模型尚未就绪');
+    throw new Error('MXWJJX');
   }
 
   const { tensor, width, height } = preprocessFromVideo(video);
