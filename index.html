@@ -143,6 +143,7 @@
 
       if (cropBuf && beautyBuf) {
         setStatus('ZHC MX…');
+        CropBeautyEngine.configureCbOrt(WASM_BASE);
         await Promise.all([
           CropBeautyEngine.initCropFromBuffer(cropBuf, { onStatus: t => setStatus(t) }),
           CropBeautyEngine.initBeautyFromBuffer(beautyBuf, { onStatus: t => setStatus(t) }),
@@ -162,6 +163,7 @@
       if (!file) return;
       setStatus(`JZ ${type} MX…`, 'busy');
       try {
+        CropBeautyEngine.configureCbOrt(WASM_BASE);
         const buf = await file.arrayBuffer();
         if (type === 'crop') {
           await CropBeautyEngine.initCropFromBuffer(buf, { onStatus: t => setStatus(t) });
