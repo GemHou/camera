@@ -109,8 +109,7 @@ async function createSessionFromBuffer(buf, onStatus) {
   } finally { clearInterval(t); }
 }
 
-async function initCropModel({ wasmBase, modelUrl, onStatus }) {
-  configureCbOrt(wasmBase);
+async function initCropModel({ modelUrl, onStatus }) {
   onStatus?.('JZCQMX…');
   const key = CACHE_KEY + '_crop';
   try {
@@ -123,25 +122,29 @@ async function initCropModel({ wasmBase, modelUrl, onStatus }) {
   onStatus?.('CQMXJX');
 }
 
-async function initCropFromFile(file, { wasmBase, onStatus }) {
-  configureCbOrt(wasmBase);
-  onStatus?.('JZ CQ MX…');
-  const buf = await file.arrayBuffer();
-  await saveCache(CACHE_KEY + '_crop', buf);
+async function initCropFromBuffer(buf, { onStatus }) {
   cropSession = await createSessionFromBuffer(buf, onStatus);
+  await saveCache(CACHE_KEY + '_crop', buf);
   onStatus?.('CQMXJX');
 }
 
-async function initBeautyFromFile(file, { wasmBase, onStatus }) {
-  configureCbOrt(wasmBase);
-  onStatus?.('JZ Beauty MX…');
-  const buf = await file.arrayBuffer();
-  await saveCache(CACHE_KEY + '_beauty', buf);
+async function initBeautyFromBuffer(buf, { onStatus }) {
   beautySession = await createSessionFromBuffer(buf, onStatus);
+  await saveCache(CACHE_KEY + '_beauty', buf);
   onStatus?.('MXMXJX');
 }
 
-async function initBeautyModel({ wasmBase, modelUrl, onStatus }) {
+async function initCropFromFile(file, { onStatus }) {
+  const buf = await file.arrayBuffer();
+  await initCropFromBuffer(buf, { onStatus });
+}
+
+async function initBeautyFromFile(file, { onStatus }) {
+  const buf = await file.arrayBuffer();
+  await initBeautyFromBuffer(buf, { onStatus });
+}
+
+async function initBeautyModel({ modelUrl, onStatus }) {
   onStatus?.('JZMXMX…');
   const key = CACHE_KEY + '_beauty';
   try {
@@ -218,4 +221,10 @@ async function runCropAndBeauty(video) {
   };
 }
 
-window.CropBeautyEngine = { initCropModel, initBeautyModel, initCropFromFile, initBeautyFromFile, runCropAndBeauty };
+window.CropBeautyEngine = {
+  initCropModel, initBeautyModel,
+  initCropFromFile, initBeautyFromFile,
+  initCropFromBuffer, initBeautyFromBuffer,
+  loadCached, configureCbOrt,
+  runCropAndBeauty,
+};

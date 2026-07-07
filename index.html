@@ -137,18 +137,42 @@
         setStatus('ONNX Runtime WJZ', 'error');
         return;
       }
-      setStatus('XZMX…（HRSC WJ）');
-      try {
+      configureCbOrt(WASM_BASE);
+
+      // Xian chang HC
+      setStatus('JC BDHC…');
+      const [cropBuf, beautyBuf] = await Promise.all([
+        CropBeautyEngine.loadCached(CACHE_KEY + '_crop'),
+        CropBeautyEngine.loadCached(CACHE_KEY + '_beauty'),
+      ]);
+
+      if (cropBuf && beautyBuf) {
+        setStatus('ZHC MX…');
         await Promise.all([
-          CropBeautyEngine.initCropModel({ wasmBase: WASM_BASE, modelUrl: CROP_MODEL_URL, onStatus: t => setStatus(t) }),
-          CropBeautyEngine.initBeautyModel({ wasmBase: WASM_BASE, modelUrl: BEAUTY_MODEL_URL, onStatus: t => setStatus(t) }),
+          CropBeautyEngine.initCropFromBuffer(cropBuf, { onStatus: t => setStatus(t) }),
+          CropBeautyEngine.initBeautyFromBuffer(beautyBuf, { onStatus: t => setStatus(t) }),
         ]);
         cropReady = true; beautyReady = true;
         setStatus('MXJX，QQDSXT', 'ready');
         updateControls();
-      } catch (err) {
-        console.error(err);
-        setStatus('WLXZSB，QSC .onnx WJ', 'error');
+        return;
+      }
+
+      // Mei HC，WLXZ + SC an niu
+      setStatus('ZJXZ MX…（KC XZ 或 SC WJ）');
+      // background download
+      Promise.all([
+        CropBeautyEngine.initCropModel({ modelUrl: CROP_MODEL_URL, onStatus: t => setStatus(t) }).then(() => { cropReady = true; checkReady(); }),
+        CropBeautyEngine.initBeautyModel({ modelUrl: BEAUTY_MODEL_URL, onStatus: t => setStatus(t) }).then(() => { beautyReady = true; checkReady(); }),
+      ]);
+    }
+
+    let readyChecked = false;
+    function checkReady() {
+      if (cropReady && beautyReady && !readyChecked) {
+        readyChecked = true;
+        setStatus('MXJX，QQDSXT', 'ready');
+        updateControls();
       }
     }
 
@@ -157,9 +181,14 @@
       if (!file) return;
       setStatus(`JZ ${type} MX…`, 'busy');
       try {
-        const fn = type === 'crop' ? CropBeautyEngine.initCropFromFile : CropBeautyEngine.initBeautyFromFile;
-        await fn(file, { wasmBase: WASM_BASE, onStatus: t => setStatus(t) });
-        if (type === 'crop') cropReady = true; else beautyReady = true;
+        const buf = await file.arrayBuffer();
+        if (type === 'crop') {
+          await CropBeautyEngine.initCropFromBuffer(buf, { onStatus: t => setStatus(t) });
+          cropReady = true;
+        } else {
+          await CropBeautyEngine.initBeautyFromBuffer(buf, { onStatus: t => setStatus(t) });
+          beautyReady = true;
+        }
         if (cropReady && beautyReady) {
           setStatus('MXJX，QQDSXT', 'ready');
           updateControls();
