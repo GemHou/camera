@@ -75,9 +75,6 @@
   <script>
     const WASM_BASE = new URL('vendor/onnxruntime-web/', window.location.href).href;
     const AUTO_INTERVAL_MS = 1500;
-    const MODEL_BASE = 'models';
-    const CROP_MODEL_URL = MODEL_BASE + '/crop_model.onnx';
-    const BEAUTY_MODEL_URL = MODEL_BASE + '/beauty_score.onnx';
 
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
@@ -158,22 +155,8 @@
         return;
       }
 
-      // Mei HC，WLXZ + SC an niu
-      setStatus('ZJXZ MX…（KC XZ 或 SC WJ）');
-      // background download
-      Promise.all([
-        CropBeautyEngine.initCropModel({ modelUrl: CROP_MODEL_URL, onStatus: t => setStatus(t) }).then(() => { cropReady = true; checkReady(); }),
-        CropBeautyEngine.initBeautyModel({ modelUrl: BEAUTY_MODEL_URL, onStatus: t => setStatus(t) }).then(() => { beautyReady = true; checkReady(); }),
-      ]);
-    }
-
-    let readyChecked = false;
-    function checkReady() {
-      if (cropReady && beautyReady && !readyChecked) {
-        readyChecked = true;
-        setStatus('MXJX，QQDSXT', 'ready');
-        updateControls();
-      }
+      // Mei HC，QSC WJ
+      setStatus('QSC .onnx WJ JC MX', 'ready');
     }
 
     async function handleFileUpload(type, event) {
