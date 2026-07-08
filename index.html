@@ -219,6 +219,10 @@
         drawBbox(r.bbox);
         updateScoreDisplay(r);
         setStatus(`CQ ${r.cropMs.toFixed(0)}ms MX ${r.beautyMs.toFixed(0)}ms`, 'ready');
+        if (r.total >= 75) {
+          playBeep();
+          downloadCropped(r.bbox);
+        }
       } catch (err) {
         setStatus('TLSB' + (err.message || err), 'error');
       } finally {
@@ -226,6 +230,36 @@
         updateControls();
         scheduleAuto();
       }
+    }
+
+    function playBeep() {
+      try {
+        const ac = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ac.createOscillator();
+        const gain = ac.createGain();
+        osc.connect(gain); gain.connect(ac.destination);
+        osc.frequency.value = 880;
+        osc.type = 'sine';
+        gain.gain.value = 0.3;
+        osc.start(); osc.stop(ac.currentTime + 0.3);
+      } catch {}
+    }
+
+    function downloadCropped(bbox) {
+      const vw = video.videoWidth, vh = video.videoHeight;
+      const bx = Math.round(bbox[0]*vw), by = Math.round(bbox[1]*vh);
+      const bw = Math.round((bbox[2]-bbox[0])*vw), bh = Math.round((bbox[3]-bbox[1])*vh);
+      if (bw <= 0 || bh <= 0) return;
+      const c = document.createElement('canvas');
+      c.width = bw; c.height = bh;
+      c.getContext('2d').drawImage(video, bx, by, bw, bh, 0, 0, bw, bh);
+      c.toBlob((blob) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `highscore_${Math.round(Date.now()/1000)}.jpg`;
+        a.click();
+        URL.revokeObjectURL(blob);
+      }, 'image/jpeg', 0.92);
     }
 
     function toggleAuto() {
