@@ -63,6 +63,7 @@
     <input id="cropInput" type="file" accept=".onnx" style="display:none" onchange="handleFileUpload('crop', event)">
     <button onclick="document.getElementById('beautyInput').click()">SC MX MX</button>
     <input id="beautyInput" type="file" accept=".onnx" style="display:none" onchange="handleFileUpload('beauty', event)">
+    <button id="netBtn" onclick="tryNetworkDownload()" class="primary">WL XZ</button>
   </div>
   <div style="margin-top:8px;display:flex;align-items:center;gap:8px;justify-content:center;font-size:13px;color:#aaa">
     <span>YZ:</span>
@@ -81,6 +82,8 @@
   <script>
     const WASM_BASE = new URL('vendor/onnxruntime-web/', window.location.href).href;
     const AUTO_INTERVAL_MS = 1500;
+    const CROP_MODEL_URL = 'models/crop_model.onnx';
+    const BEAUTY_MODEL_URL = 'models/beauty_score.onnx';
 
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
@@ -90,6 +93,7 @@
     const captureBtn = document.getElementById('captureBtn');
     const cbBtn = document.getElementById('cbBtn');
     const autoCbBtn = document.getElementById('autoCbBtn');
+    const netBtn = document.getElementById('netBtn');
 
     const SCORE_KEYS = ['total','element','story','composition','light','atmosphere'];
 
@@ -138,6 +142,7 @@
     }
 
     async function init() {
+      netBtn.style.display = 'none';
       if (location.protocol === 'file:') {
         setStatus('QY http://127.0.0.1:8080 DK', 'error');
         return;
@@ -166,8 +171,9 @@
         return;
       }
 
-      // Mei HC，QSC WJ
-      setStatus('QSC .onnx WJ JC MX', 'ready');
+      // Mei HC, xian shi SC + WL an niu
+      setStatus('QSC .onnx WJ, huo dian WL XZ', '');
+      netBtn.style.display = '';
     }
 
     async function handleFileUpload(type, event) {
@@ -192,6 +198,26 @@
         }
       } catch (err) {
         setStatus(`${type} MX JZSB: ` + (err.message || err), 'error');
+      }
+    }
+
+    let netDownloading = false;
+    async function tryNetworkDownload() {
+      if (netDownloading) return;
+      netDownloading = true; netBtn.disabled = true;
+      setStatus('ZLXZ MX…', 'busy');
+      try {
+        CropBeautyEngine.configureCbOrt(WASM_BASE);
+        await Promise.all([
+          CropBeautyEngine.initCropModel({ modelUrl: CROP_MODEL_URL, onStatus: t => setStatus(t) }).then(() => { cropReady = true; }),
+          CropBeautyEngine.initBeautyModel({ modelUrl: BEAUTY_MODEL_URL, onStatus: t => setStatus(t) }).then(() => { beautyReady = true; }),
+        ]);
+        setStatus('MXJX，QQDSXT', 'ready');
+        updateControls();
+      } catch (err) {
+        setStatus('WLXZSB，QSC WJ' + (err.message || err), 'error');
+      } finally {
+        netDownloading = false; netBtn.disabled = false;
       }
     }
 
