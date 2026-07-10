@@ -64,6 +64,7 @@
     <button onclick="document.getElementById('beautyInput').click()">SC MX MX</button>
     <input id="beautyInput" type="file" accept=".onnx" style="display:none" onchange="handleFileUpload('beauty', event)">
     <button id="netBtn" onclick="tryNetworkDownload()" class="primary">WL XZ</button>
+    <button onclick="clearModels()" style="background:#5a1a1a">QC MX</button>
   </div>
   <div style="margin-top:8px;display:flex;align-items:center;gap:8px;justify-content:center;font-size:13px;color:#aaa">
     <span>YZ:</span>
@@ -219,6 +220,19 @@
       } finally {
         netDownloading = false; netBtn.disabled = false;
       }
+    }
+
+    async function clearModels() {
+      if (!confirm('QRQCMX？ZHCQ CSCX。')) return;
+      cropReady = false; beautyReady = false;
+      cropSession = null; beautySession = null;
+      try {
+        const db = await new Promise((r) => { const d = indexedDB.open('camera-cb-cache', 1); d.onsuccess = () => r(d.result); d.onerror = () => r(null); });
+        if (db) { db.close(); indexedDB.deleteDatabase('camera-cb-cache'); }
+      } catch {}
+      setStatus('MXQCCG，CKSC WJ huo WL XZ', 'ready');
+      updateControls();
+      netBtn.style.display = '';
     }
 
     async function startCamera() {
