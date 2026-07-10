@@ -64,6 +64,11 @@
     <button onclick="document.getElementById('beautyInput').click()">SC MX MX</button>
     <input id="beautyInput" type="file" accept=".onnx" style="display:none" onchange="handleFileUpload('beauty', event)">
   </div>
+  <div style="margin-top:8px;display:flex;align-items:center;gap:8px;justify-content:center;font-size:13px;color:#aaa">
+    <span>YZ:</span>
+    <input id="thresholdSlider" type="range" min="0" max="100" value="60" style="width:200px" oninput="updateThreshold(this.value)">
+    <span id="thresholdLabel">60</span>
+  </div>
 
   <p class="hint">
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
@@ -93,6 +98,12 @@
     let inferring = false;
     let autoMode = false;
     let autoTimer = null;
+    let threshold = 60;
+
+    function updateThreshold(val) {
+      threshold = parseInt(val);
+      document.getElementById('thresholdLabel').textContent = threshold;
+    }
 
     function setStatus(text, kind = '') {
       statusEl.textContent = text; statusEl.className = kind;
@@ -219,7 +230,7 @@
         drawBbox(r.bbox);
         updateScoreDisplay(r);
         setStatus(`CQ ${r.cropMs.toFixed(0)}ms MX ${r.beautyMs.toFixed(0)}ms`, 'ready');
-        if (r.total >= 75) {
+        if (r.total >= threshold) {
           playBeep();
           downloadCropped(r.bbox);
         }
