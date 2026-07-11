@@ -82,7 +82,7 @@
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
   <div style="display:flex;justify-content:center;gap:10px;margin-top:6px;font-size:9px;color:#444;font-family:monospace">
-    <span id="versionLabel">v20260711_1408</span>
+    <span id="versionLabel">v20260711_1412</span>
     <span id="coordsLabel">GPS: --</span>
     <span id="cityLabel">--</span>
   </div>
@@ -265,8 +265,8 @@
           const vl = document.getElementById('cityLabel');
           cl.textContent = 'DWZ…'; vl.textContent = '';
 
-          function showCoords(lat, lng) {
-            cl.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+          function showCoords(lat, lng, src) {
+            cl.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)} (${src})`;
             vl.textContent = 'ZZ…';
             const ctrl = new AbortController();
             setTimeout(() => ctrl.abort(), 5000);
@@ -283,19 +283,19 @@
             return;
           }
           navigator.geolocation.getCurrentPosition(
-            (p) => showCoords(p.coords.latitude, p.coords.longitude),
+            (p) => showCoords(p.coords.latitude, p.coords.longitude, 'GPS'),
             () => {
               cl.textContent = 'DWZ… (WL)';
               navigator.geolocation.getCurrentPosition(
-                (p) => showCoords(p.coords.latitude, p.coords.longitude),
+                (p) => showCoords(p.coords.latitude, p.coords.longitude, 'WL'),
                 () => {
                   cl.textContent = 'DWZ… (IP)';
                   fetch('https://ip-api.com/json/?fields=lat,lon,status').then(r=>r.json()).then(d => {
-                    if (d.status==='success') showCoords(d.lat, d.lon);
+                    if (d.status==='success') showCoords(d.lat, d.lon, 'IP');
                     else throw Error();
                   }).catch(() => {
                     fetch('https://ipinfo.io/json').then(r=>r.json()).then(d => {
-                      if (d.loc) { const c=d.loc.split(','); showCoords(parseFloat(c[0]), parseFloat(c[1])); }
+                      if (d.loc) { const c=d.loc.split(','); showCoords(parseFloat(c[0]), parseFloat(c[1]), 'IP'); }
                       else cl.textContent = 'SB';
                     }).catch(() => { cl.textContent = 'SB'; });
                   });
