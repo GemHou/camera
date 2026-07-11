@@ -83,7 +83,7 @@
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
   <div style="display:flex;justify-content:center;gap:10px;margin-top:6px;font-size:9px;color:#444;font-family:monospace">
-    <span id="versionLabel">v20260711_2203</span>
+    <span id="versionLabel">v20260711_2206</span>
     <span id="coordsLabel">GPS: --</span>
     <span id="cityLabel">--</span>
   </div>
@@ -110,24 +110,7 @@
     const autoCbBtn = document.getElementById('autoCbBtn');
     const switchCamBtn = document.getElementById('switchCamBtn');
     let facingMode = 'environment';
-    let cameraList = [];
     let cameraIndex = 0;
-    let cameraList = [];
-    let cameraIndex = 0;
-
-    async function refreshCameras() {
-      await navigator.mediaDevices.getUserMedia({ video: true, audio: false }).then(s => s.getTracks().forEach(t => t.stop())).catch(() => {});
-      const all = await navigator.mediaDevices.enumerateDevices();
-      cameraList = all.filter(d => d.kind === 'videoinput');
-      // Deduplicate by deviceId
-      const seen = new Set();
-      cameraList = cameraList.filter(d => {
-        if (!d.deviceId || seen.has(d.deviceId)) return false;
-        seen.add(d.deviceId);
-        return true;
-      });
-    }
-    let selectedDeviceId = null;
     const netBtn = document.getElementById('netBtn');
 
     const SCORE_KEYS = ['total','element','story','composition','light','atmosphere'];
@@ -269,26 +252,21 @@
       netBtn.style.display = '';
     }
 
-    async function startCamera(facing) {
-      if (facing) facingMode = facing;
+    async function startCamera() {
       try {
-        if (cameraList.length === 0) {
-          await refreshCameras();
-        }
         if (video.srcObject) {
           video.srcObject.getTracks().forEach(t => t.stop());
         }
-        const cid = cameraList[cameraIndex]?.deviceId;
-        const label = cameraList[cameraIndex]?.label || `SXT ${cameraIndex+1}`;
-        const constraints = { video: { width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false };
-        if (cid) { constraints.video.deviceId = { exact: cid }; }
-        else { constraints.video.facingMode = 'environment'; }
-        switchCamBtn.textContent = `QH (${cameraIndex+1}/${cameraList.length})`;
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        facingMode = facingMode === 'environment' ? 'user' : 'environment';
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: false
+        });
         video.srcObject = stream;
         await video.play();
         captureBtn.disabled = false;
         switchCamBtn.disabled = false;
+        switchCamBtn.textContent = facingMode === 'environment' ? 'QH SXT (H)' : 'QH SXT (Q)';
         updateControls();
         setStatus('JX', 'ready');
         // location
@@ -344,8 +322,6 @@
     }
 
     function switchCamera() {
-      if (cameraList.length === 0) return;
-      cameraIndex = (cameraIndex + 1) % cameraList.length;
       startCamera();
     }
 
