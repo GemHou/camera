@@ -47,13 +47,16 @@
       <video id="video" autoplay playsinline muted></video>
       <canvas id="bboxCanvas"></canvas>
     </div>
-    <div class="scores" id="scoreBoard">
-      <div class="score-item"><div class="score-label">ZH</div><div class="score-value" id="s-total">-</div></div>
-      <div class="score-item"><div class="score-label">YS</div><div class="score-value" id="s-element">-</div></div>
-      <div class="score-item"><div class="score-label">GS</div><div class="score-value" id="s-story">-</div></div>
-      <div class="score-item"><div class="score-label">GT</div><div class="score-value" id="s-composition">-</div></div>
-      <div class="score-item"><div class="score-label">GY</div><div class="score-value" id="s-light">-</div></div>
-      <div class="score-item"><div class="score-label">FW</div><div class="score-value" id="s-atmosphere">-</div></div>
+    <div style="display:flex;gap:8px;align-items:start;margin-top:4px">
+      <canvas id="cropPreview" width="160" height="90" style="border:1px solid #333;border-radius:2px;flex-shrink:0;background:#000"></canvas>
+      <div class="scores" id="scoreBoard" style="flex:1">
+        <div class="score-item"><div class="score-label">ZH</div><div class="score-value" id="s-total">-</div></div>
+        <div class="score-item"><div class="score-label">YS</div><div class="score-value" id="s-element">-</div></div>
+        <div class="score-item"><div class="score-label">GS</div><div class="score-value" id="s-story">-</div></div>
+        <div class="score-item"><div class="score-label">GT</div><div class="score-value" id="s-composition">-</div></div>
+        <div class="score-item"><div class="score-label">GY</div><div class="score-value" id="s-light">-</div></div>
+        <div class="score-item"><div class="score-label">FW</div><div class="score-value" id="s-atmosphere">-</div></div>
+      </div>
     </div>
   </div>
 
@@ -94,6 +97,8 @@
     const canvas = document.getElementById('canvas');
     const bboxCanvas = document.getElementById('bboxCanvas');
     const bboxCtx = bboxCanvas.getContext('2d');
+    const cropPreview = document.getElementById('cropPreview');
+    const cropPreviewCtx = cropPreview.getContext('2d');
     const statusEl = document.getElementById('status');
     const captureBtn = document.getElementById('captureBtn');
     const cbBtn = document.getElementById('cbBtn');
@@ -273,6 +278,10 @@
         const r = await CropBeautyEngine.runCropAndBeauty(video);
         drawBbox(r.bbox);
         updateScoreDisplay(r);
+        // draw cropped preview
+        const vw = video.videoWidth, vh = video.videoHeight;
+        const bx = [Math.round(r.bbox[0]*vw), Math.round(r.bbox[1]*vh), Math.round(r.bbox[2]*vw), Math.round(r.bbox[3]*vh)];
+        cropPreviewCtx.drawImage(video, bx[0], bx[1], bx[2]-bx[0], bx[3]-bx[1], 0, 0, cropPreview.width, cropPreview.height);
         setStatus(`CQ ${r.cropMs.toFixed(0)}ms MX ${r.beautyMs.toFixed(0)}ms`, 'ready');
         if (r.total >= threshold) {
           playBeep();
