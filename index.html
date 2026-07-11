@@ -81,7 +81,11 @@
   <p class="hint">
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
-  <p style="font-size:9px;color:#444;text-align:center;margin-top:6px;font-family:monospace" id="versionBar">v20260711_1357 | GPS: --</p>
+  <div style="display:flex;justify-content:center;gap:10px;margin-top:6px;font-size:9px;color:#444;font-family:monospace">
+    <span id="versionLabel">v20260711_1358</span>
+    <span id="coordsLabel">GPS: --</span>
+    <span id="cityLabel">--</span>
+  </div>
 
   <canvas id="canvas" hidden></canvas>
 
@@ -257,40 +261,42 @@
         setStatus('JX', 'ready');
         // location
         (function locate(){
-          const bar = document.getElementById('versionBar');
-          bar.textContent = 'v20260711_1357 | DWZ…';
+          const cl = document.getElementById('coordsLabel');
+          const vl = document.getElementById('cityLabel');
+          cl.textContent = 'DWZ…'; vl.textContent = '';
 
           function showCoords(lat, lng) {
-            bar.textContent = `v20260711_1357 | ${lat.toFixed(4)}, ${lng.toFixed(4)} | ZZ…`;
+            cl.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+            vl.textContent = 'ZZ…';
             fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&accept-language=zh`,
               { headers: { 'User-Agent': 'GemHouCamera/1.0' } })
               .then(r => r.json()).then(d => {
                 const a = d.address;
                 const parts = [a.state, a.city||a.county||a.town, a.suburb||a.village].filter(Boolean);
-                bar.textContent = `v20260711_1357 | ${lat.toFixed(4)}, ${lng.toFixed(4)} | ${parts.join(' ')}`;
-              }).catch(() => { bar.textContent = `v20260711_1357 | ${lat.toFixed(4)}, ${lng.toFixed(4)}`; });
+                vl.textContent = parts.join(' ') || '--';
+              }).catch(() => { vl.textContent = '--'; });
           }
 
           if (!('geolocation' in navigator)) {
-            bar.textContent = 'v20260711_1357 | DWZ SB (no GPS)';
+            cl.textContent = 'SB'; vl.textContent = 'no GPS';
             return;
           }
           navigator.geolocation.getCurrentPosition(
             (p) => showCoords(p.coords.latitude, p.coords.longitude),
             () => {
-              bar.textContent = 'v20260711_1357 | DWZ… (WL/JZ)';
+              cl.textContent = 'DWZ… (WL)';
               navigator.geolocation.getCurrentPosition(
                 (p) => showCoords(p.coords.latitude, p.coords.longitude),
                 () => {
-                  bar.textContent = 'v20260711_1357 | DWZ… (IP)';
+                  cl.textContent = 'DWZ… (IP)';
                   fetch('https://ip-api.com/json/?fields=lat,lon,status').then(r=>r.json()).then(d => {
                     if (d.status==='success') showCoords(d.lat, d.lon);
                     else throw Error();
                   }).catch(() => {
                     fetch('https://ipinfo.io/json').then(r=>r.json()).then(d => {
                       if (d.loc) { const c=d.loc.split(','); showCoords(parseFloat(c[0]), parseFloat(c[1])); }
-                      else bar.textContent = 'v20260711_1357 | DWZ SB';
-                    }).catch(() => { bar.textContent = 'v20260711_1357 | DWZ SB'; });
+                      else cl.textContent = 'SB';
+                    }).catch(() => { cl.textContent = 'SB'; });
                   });
                 },
                 },
