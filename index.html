@@ -87,7 +87,7 @@
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
   <div style="display:flex;justify-content:center;gap:10px;margin-top:6px;font-size:9px;color:#444;font-family:monospace">
-    <span id="versionLabel">v20260711_2218</span>
+    <span id="versionLabel">v20260711_2222</span>
     <span id="coordsLabel">GPS: --</span>
     <span id="cityLabel">--</span>
   </div>
@@ -135,7 +135,13 @@
       const v = parseFloat(val);
       document.getElementById('zoomLabel').textContent = `Z:${v.toFixed(1)}x`;
       if (window._zoomTrack) {
-        window._zoomTrack.applyConstraints({ advanced: [{ zoom: v }] }).catch(() => {});
+        window._zoomTrack.applyConstraints({ advanced: [{ zoom: v }] }).catch(() => {
+          // Phone rejected this zoom level, snap back to min supported
+          if (window._zoomRange && v < window._zoomRange.min) {
+            document.getElementById('zoomSlider').value = window._zoomRange.min;
+            document.getElementById('zoomLabel').textContent = `Z:${window._zoomRange.min.toFixed(1)}x`;
+          }
+        });
       }
     }
 
@@ -328,6 +334,7 @@
         const zl = document.getElementById('zoomLabel');
         if (window._zoomRange && zs) {
           const r = window._zoomRange;
+          zs.min = Math.min(r.min, 0.5);  // allow trying ultrawide even if not advertised
           zs.min = r.min; zs.max = r.max;
           zs.step = Math.max(0.01, (r.max-r.min)/20);
           zs.value = Math.max(r.min, 1);
