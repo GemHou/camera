@@ -87,7 +87,7 @@
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
   <div style="display:flex;justify-content:center;gap:10px;margin-top:6px;font-size:9px;color:#444;font-family:monospace">
-    <span id="versionLabel">v20260711_2212</span>
+    <span id="versionLabel">v20260711_2215</span>
     <span id="coordsLabel">GPS: --</span>
     <span id="cityLabel">--</span>
   </div>
@@ -294,17 +294,15 @@
         captureBtn.disabled = false;
         switchCamBtn.disabled = cameraList.length <= 1;
         switchCamBtn.textContent = `QH ${cameraIndex+1}/${cameraList.length}`;
-        // Show zoom slider if available
         const zs = document.getElementById('zoomSlider');
         const zl = document.getElementById('zoomLabel');
         if (window._zoomRange && zs) {
-          zs.min = window._zoomRange.min;
-          zs.max = window._zoomRange.max;
-          zs.step = (window._zoomRange.max - window._zoomRange.min) / 10;
-          zs.value = window._zoomRange.min;
-          zs.style.display = '';
-          zl.style.display = '';
-          zl.textContent = `Z:${window._zoomRange.min.toFixed(1)}x`;
+          const r = window._zoomRange;
+          zs.min = r.min; zs.max = r.max;
+          zs.step = Math.max(0.01, (r.max-r.min)/20);
+          zs.value = Math.max(r.min, 1);
+          zs.style.display = ''; zl.style.display = '';
+          updateZoom(zs.value);
         } else if (zs) {
           zs.style.display = 'none';
           zl.style.display = 'none';
