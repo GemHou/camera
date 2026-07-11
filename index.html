@@ -81,7 +81,7 @@
   <p class="hint">
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
-  <p style="font-size:9px;color:#444;text-align:center;margin-top:6px;font-family:monospace">v20260711_1336</p>
+  <p style="font-size:9px;color:#444;text-align:center;margin-top:6px;font-family:monospace" id="versionBar">v20260711_1345 | GPS: --</p>
 
   <canvas id="canvas" hidden></canvas>
 
@@ -255,6 +255,17 @@
         captureBtn.disabled = false;
         updateControls();
         setStatus('JX', 'ready');
+        // request GPS
+        if ('geolocation' in navigator) {
+          navigator.geolocation.getCurrentPosition(
+            (p) => {
+              document.getElementById('versionBar').textContent =
+                `v20260711_1345 | ${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)}`;
+            },
+            () => {},
+            { enableHighAccuracy: true, timeout: 10000 }
+          );
+        }
       } catch (err) {
         alert('SXTQDSB' + err);
       }
