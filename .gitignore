@@ -11,3 +11,4 @@ __pycache__/
 # Local benchmark / test outputs
 bench_*.jpg
 test_threads.jpg
+.ipynb_checkpoints
