@@ -87,7 +87,7 @@
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
   <div style="display:flex;justify-content:center;gap:10px;margin-top:6px;font-size:9px;color:#444;font-family:monospace">
-    <span id="versionLabel">v20260711_2215</span>
+    <span id="versionLabel">v20260711_2218</span>
     <span id="coordsLabel">GPS: --</span>
     <span id="cityLabel">--</span>
   </div>
@@ -267,15 +267,44 @@
     async function startCamera() {
       try {
         if (cameraList.length === 0) {
-          const tmp = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }).catch(() => null);
-          if (tmp) tmp.getTracks().forEach(t => t.stop());
+          // Warmup + enumerate ALL cameras including ultrawide/telephoto
+          const tmp = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+            audio: false
+          }).catch(() => null);
+          if (tmp) {
+            const track = tmp.getVideoTracks()[0];
+            // Try to zoom out to trigger ultrawide enumeration
+            try { await track.applyConstraints({ advanced: [{ zoom: 0.5 }] }); } catch {}
+            track.stop();
+          }
+          // Enumerate after warmup
           const all = await navigator.mediaDevices.enumerateDevices();
           const seen = new Set();
           cameraList = all.filter(d => d.kind === 'videoinput' && d.deviceId && !seen.has(d.deviceId) && seen.add(d.deviceId));
-          if (cameraList.length === 0) cameraList = [{ deviceId: '', label: 'default' }];
-          if (cameraList.length === 2) {
-            cameraList = [cameraList[0], cameraList[1]];
+          // Try each camera to get its zoom range and label it
+          for (const cam of cameraList) {
+            try {
+              const s = await navigator.mediaDevices.getUserMedia({
+                video: { deviceId: { exact: cam.deviceId }, width: 320, height: 240 },
+                audio: false
+              });
+              const t = s.getVideoTracks()[0];
+              const cap = t.getCapabilities?.();
+              if (cap?.zoom) {
+                cam.zoomMin = cap.zoom.min;
+                cam.zoomMax = cap.zoom.max;
+              } else {
+                const settings = t.getSettings();
+                cam.zoomMin = settings?.zoom || 1;
+                cam.zoomMax = settings?.zoom || 1;
+              }
+              t.stop();
+            } catch {}
           }
+          // Sort: cameras with wider zoom range first
+          cameraList.sort((a, b) => (b.zoomMax - b.zoomMin) - (a.zoomMax - a.zoomMin));
+          if (cameraList.length === 0) cameraList = [{ deviceId: '', label: 'default' }];
         }
         if (video.srcObject) {
           video.srcObject.getTracks().forEach(t => t.stop());
@@ -287,7 +316,8 @@
         const track = stream.getVideoTracks()[0];
         const cap = track.getCapabilities?.();
         // Store zoom info
-        window._zoomRange = (cap?.zoom && cap.zoom.max > 1) ? { min: cap.zoom.min, max: cap.zoom.max } : null;
+        window._zoomRange = (cap?.zoom && cap.zoom.max > 1) ? { min: cap.zoom.min, max: cap.zoom.max } :
+                           (cam.zoomMax > 1) ? { min: cam.zoomMin || 1, max: cam.zoomMax } : null;
         window._zoomTrack = track;
         video.srcObject = stream;
         await video.play();
