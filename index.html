@@ -81,7 +81,7 @@
   <p class="hint">
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
-  <p style="font-size:9px;color:#444;text-align:center;margin-top:6px;font-family:monospace" id="versionBar">v20260711_1346 | GPS: --</p>
+  <p style="font-size:9px;color:#444;text-align:center;margin-top:6px;font-family:monospace" id="versionBar">v20260711_1349 | GPS: --</p>
 
   <canvas id="canvas" hidden></canvas>
 
@@ -255,26 +255,40 @@
         captureBtn.disabled = false;
         updateControls();
         setStatus('JX', 'ready');
-        // request GPS
+        // request GPS (with network fallback)
         if ('geolocation' in navigator) {
+          const bar = document.getElementById('versionBar');
+          function showLocation(lat, lng) {
+            bar.textContent = `v20260711_1349 | ${lat.toFixed(5)}, ${lng.toFixed(5)} | ZZ…`;
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&accept-language=zh`,
+              { headers: { 'User-Agent': 'GemHouCamera/1.0' } })
+              .then(r => r.json()).then(d => {
+                const a = d.address;
+                const parts = [a.state, a.city || a.county || a.town, a.suburb || a.village].filter(Boolean);
+                bar.textContent = `v20260711_1349 | ${lat}, ${lng} | ${parts.join(' ')}`;
+              }).catch(() => {});
+          }
+          function ipFallback() {
+            fetch('https://ipapi.co/json/')
+              .then(r => r.json()).then(d => {
+                if (d.latitude && d.longitude) showLocation(d.latitude, d.longitude);
+              }).catch(() => {
+                fetch('https://ip-api.com/json/')
+                  .then(r => r.json()).then(d => {
+                    if (d.lat && d.lon) showLocation(d.lat, d.lon);
+                  }).catch(() => {});
+              });
+          }
           navigator.geolocation.getCurrentPosition(
-            (p) => {
-              const lat = p.coords.latitude.toFixed(5);
-              const lng = p.coords.longitude.toFixed(5);
-              document.getElementById('versionBar').textContent = `v20260711_1346 | ${lat}, ${lng} | ZZ…`;
-              // reverse geocode
-              fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&accept-language=zh`,
-                { headers: { 'User-Agent': 'GemHouCamera/1.0' } })
-                .then(r => r.json())
-                .then(d => {
-                  const a = d.address;
-                  const parts = [a.state, a.city || a.county || a.town, a.suburb || a.village].filter(Boolean);
-                  document.getElementById('versionBar').textContent =
-                    `v20260711_1346 | ${lat}, ${lng} | ${parts.join(' ')}`;
-                })
-                .catch(() => {});
+            (p) => showLocation(p.coords.latitude, p.coords.longitude),
+            () => {
+              // GPS failed, try low accuracy (WiFi/cell)
+              navigator.geolocation.getCurrentPosition(
+                (p) => showLocation(p.coords.latitude, p.coords.longitude),
+                () => ipFallback(),
+                { enableHighAccuracy: false, timeout: 8000 }
+              );
             },
-            () => {},
             { enableHighAccuracy: true, timeout: 10000 }
           );
         }
