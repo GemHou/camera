@@ -83,7 +83,7 @@
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
   <div style="display:flex;justify-content:center;gap:10px;margin-top:6px;font-size:9px;color:#444;font-family:monospace">
-    <span id="versionLabel">v20260711_2206</span>
+    <span id="versionLabel">v20260711_2207</span>
     <span id="coordsLabel">GPS: --</span>
     <span id="cityLabel">--</span>
   </div>
@@ -109,7 +109,7 @@
     const cbBtn = document.getElementById('cbBtn');
     const autoCbBtn = document.getElementById('autoCbBtn');
     const switchCamBtn = document.getElementById('switchCamBtn');
-    let facingMode = 'environment';
+    let cameraList = [];
     let cameraIndex = 0;
     const netBtn = document.getElementById('netBtn');
 
@@ -254,19 +254,27 @@
 
     async function startCamera() {
       try {
+        // First call: enumerate cameras
+        if (cameraList.length === 0) {
+          const tmp = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }).catch(() => null);
+          if (tmp) tmp.getTracks().forEach(t => t.stop());
+          const all = await navigator.mediaDevices.enumerateDevices();
+          const seen = new Set();
+          cameraList = all.filter(d => d.kind === 'videoinput' && d.deviceId && !seen.has(d.deviceId) && seen.add(d.deviceId));
+          if (cameraList.length === 0) cameraList = [{ deviceId: '', label: 'default' }];
+        }
         if (video.srcObject) {
           video.srcObject.getTracks().forEach(t => t.stop());
         }
-        facingMode = facingMode === 'environment' ? 'user' : 'environment';
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
-          audio: false
-        });
+        const cam = cameraList[cameraIndex];
+        const constraints = { video: { width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false };
+        if (cam.deviceId) constraints.video.deviceId = { exact: cam.deviceId };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = stream;
         await video.play();
         captureBtn.disabled = false;
-        switchCamBtn.disabled = false;
-        switchCamBtn.textContent = facingMode === 'environment' ? 'QH SXT (H)' : 'QH SXT (Q)';
+        switchCamBtn.disabled = cameraList.length <= 1;
+        switchCamBtn.textContent = `QH ${cameraIndex+1}/${cameraList.length}`;
         updateControls();
         setStatus('JX', 'ready');
         // location
@@ -322,6 +330,8 @@
     }
 
     function switchCamera() {
+      if (cameraList.length === 0) return;
+      cameraIndex = (cameraIndex + 1) % cameraList.length;
       startCamera();
     }
 
