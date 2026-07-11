@@ -1,0 +1,5 @@
+#!/bin/bash
+# Auto-update version string in index.html before each commit
+VERSION="v$(date +%Y%m%d_%H%M)"
+sed -i "s/v[0-9]\{8\}_[0-9]\{4\}/$VERSION/" "$(git rev-parse --show-toplevel)/index.html"
+git add "$(git rev-parse --show-toplevel)/index.html"
