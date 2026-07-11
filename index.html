@@ -81,7 +81,7 @@
   <p class="hint">
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
-  <p style="font-size:9px;color:#444;text-align:center;margin-top:6px;font-family:monospace" id="versionBar">v20260711_1349 | GPS: --</p>
+  <p style="font-size:9px;color:#444;text-align:center;margin-top:6px;font-family:monospace" id="versionBar">v20260711_1353 | GPS: --</p>
 
   <canvas id="canvas" hidden></canvas>
 
@@ -255,43 +255,45 @@
         captureBtn.disabled = false;
         updateControls();
         setStatus('JX', 'ready');
-        // request GPS (with network fallback)
-        if ('geolocation' in navigator) {
+        // location
+        (function locate(){
           const bar = document.getElementById('versionBar');
-          function showLocation(lat, lng) {
-            bar.textContent = `v20260711_1349 | ${lat.toFixed(5)}, ${lng.toFixed(5)} | ZZ…`;
+          bar.textContent = 'v20260711_1353 | DWZ…';
+
+          function showCoords(lat, lng) {
+            bar.textContent = `v20260711_1353 | ${lat.toFixed(4)}, ${lng.toFixed(4)} | ZZ…`;
             fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&accept-language=zh`,
               { headers: { 'User-Agent': 'GemHouCamera/1.0' } })
               .then(r => r.json()).then(d => {
                 const a = d.address;
-                const parts = [a.state, a.city || a.county || a.town, a.suburb || a.village].filter(Boolean);
-                bar.textContent = `v20260711_1349 | ${lat}, ${lng} | ${parts.join(' ')}`;
-              }).catch(() => {});
+                const parts = [a.state, a.city||a.county||a.town, a.suburb||a.village].filter(Boolean);
+                bar.textContent = `v20260711_1353 | ${lat.toFixed(4)}, ${lng.toFixed(4)} | ${parts.join(' ')}`;
+              }).catch(() => { bar.textContent = `v20260711_1353 | ${lat.toFixed(4)}, ${lng.toFixed(4)}`; });
           }
-          function ipFallback() {
-            fetch('https://ipapi.co/json/')
-              .then(r => r.json()).then(d => {
-                if (d.latitude && d.longitude) showLocation(d.latitude, d.longitude);
-              }).catch(() => {
-                fetch('https://ip-api.com/json/')
-                  .then(r => r.json()).then(d => {
-                    if (d.lat && d.lon) showLocation(d.lat, d.lon);
-                  }).catch(() => {});
-              });
+
+          if (!('geolocation' in navigator)) {
+            bar.textContent = 'v20260711_1353 | DWZ SB (no GPS)';
+            return;
           }
           navigator.geolocation.getCurrentPosition(
-            (p) => showLocation(p.coords.latitude, p.coords.longitude),
+            (p) => showCoords(p.coords.latitude, p.coords.longitude),
             () => {
-              // GPS failed, try low accuracy (WiFi/cell)
+              bar.textContent = 'v20260711_1353 | DWZ… (WL/JZ)';
               navigator.geolocation.getCurrentPosition(
-                (p) => showLocation(p.coords.latitude, p.coords.longitude),
-                () => ipFallback(),
+                (p) => showCoords(p.coords.latitude, p.coords.longitude),
+                () => {
+                  bar.textContent = 'v20260711_1353 | DWZ… (IP)';
+                  fetch('https://ip-api.com/json/?fields=lat,lon,status').then(r=>r.json()).then(d => {
+                    if (d.status==='success') showCoords(d.lat, d.lon);
+                    else bar.textContent = 'v20260711_1353 | DWZ SB';
+                  }).catch(() => { bar.textContent = 'v20260711_1353 | DWZ SB'; });
+                },
                 { enableHighAccuracy: false, timeout: 8000 }
               );
             },
             { enableHighAccuracy: true, timeout: 10000 }
           );
-        }
+        })();
       } catch (err) {
         alert('SXTQDSB' + err);
       }
