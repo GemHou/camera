@@ -81,7 +81,7 @@
   <p class="hint">
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
-  <p style="font-size:9px;color:#444;text-align:center;margin-top:6px;font-family:monospace">v20260711_1331</p>
+  <p style="font-size:9px;color:#444;text-align:center;margin-top:6px;font-family:monospace">v20260711_1336</p>
 
   <canvas id="canvas" hidden></canvas>
 
@@ -246,7 +246,10 @@
 
     async function startCamera() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: false
+        });
         video.srcObject = stream;
         await video.play();
         captureBtn.disabled = false;
@@ -266,7 +269,7 @@
         const a = document.createElement('a');
         a.href = url; a.download = `photo-${Date.now()}.jpg`; a.click();
         URL.revokeObjectURL(url);
-      }, 'image/jpeg', 0.92);
+      }, 'image/jpeg', 0.95);
     }
 
     async function runCropBeauty() {
@@ -312,18 +315,22 @@
     function downloadCropped(bbox) {
       const vw = video.videoWidth, vh = video.videoHeight;
       const bx = Math.round(bbox[0]*vw), by = Math.round(bbox[1]*vh);
-      const bw = Math.round((bbox[2]-bbox[0])*vw), bh = Math.round((bbox[3]-bbox[1])*vh);
+      let bw = Math.round((bbox[2]-bbox[0])*vw), bh = Math.round((bbox[3]-bbox[1])*vh);
       if (bw <= 0 || bh <= 0) return;
+      // ensure minimum output size
+      const minSize = 1920;
+      let scale = 1;
+      while (bw * scale < minSize && bh * scale < minSize) scale *= 2;
       const c = document.createElement('canvas');
-      c.width = bw; c.height = bh;
-      c.getContext('2d').drawImage(video, bx, by, bw, bh, 0, 0, bw, bh);
+      c.width = Math.round(bw * scale); c.height = Math.round(bh * scale);
+      c.getContext('2d').drawImage(video, bx, by, bw, bh, 0, 0, c.width, c.height);
       c.toBlob((blob) => {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = `highscore_${Math.round(Date.now()/1000)}.jpg`;
         a.click();
         URL.revokeObjectURL(blob);
-      }, 'image/jpeg', 0.92);
+      }, 'image/jpeg', 0.95);
     }
 
     function toggleAuto() {
