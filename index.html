@@ -62,6 +62,7 @@
 
   <div class="controls">
     <button onclick="startCamera()">QDSXT</button>
+    <button id="switchCamBtn" onclick="switchCamera()" disabled>QH SXT</button>
     <button id="captureBtn" onclick="takePhoto()" disabled>PZBC</button>
     <button id="cbBtn" class="primary" onclick="runCropBeauty()" disabled>CQ+MX</button>
     <button id="autoCbBtn" onclick="toggleAuto()" disabled>ZDSX：G</button>
@@ -82,7 +83,7 @@
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
   <div style="display:flex;justify-content:center;gap:10px;margin-top:6px;font-size:9px;color:#444;font-family:monospace">
-    <span id="versionLabel">v20260711_2051</span>
+    <span id="versionLabel">v20260711_2152</span>
     <span id="coordsLabel">GPS: --</span>
     <span id="cityLabel">--</span>
   </div>
@@ -107,6 +108,8 @@
     const captureBtn = document.getElementById('captureBtn');
     const cbBtn = document.getElementById('cbBtn');
     const autoCbBtn = document.getElementById('autoCbBtn');
+    const switchCamBtn = document.getElementById('switchCamBtn');
+    let facingMode = 'environment';
     const netBtn = document.getElementById('netBtn');
 
     const SCORE_KEYS = ['total','element','story','composition','light','atmosphere'];
@@ -248,15 +251,20 @@
       netBtn.style.display = '';
     }
 
-    async function startCamera() {
+    async function startCamera(facing) {
+      if (facing) facingMode = facing;
       try {
+        if (video.srcObject) {
+          video.srcObject.getTracks().forEach(t => t.stop());
+        }
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+          video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
           audio: false
         });
         video.srcObject = stream;
         await video.play();
         captureBtn.disabled = false;
+        switchCamBtn.disabled = false;
         updateControls();
         setStatus('JX', 'ready');
         // location
@@ -309,6 +317,12 @@
       } catch (err) {
         alert('SXTQDSB' + err);
       }
+    }
+
+    function switchCamera() {
+      facingMode = facingMode === 'environment' ? 'user' : 'environment';
+      switchCamBtn.textContent = facingMode === 'environment' ? 'QH SXT (H)' : 'QH SXT (Q)';
+      startCamera(facingMode);
     }
 
     function takePhoto() {
