@@ -82,7 +82,7 @@
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
   <div style="display:flex;justify-content:center;gap:10px;margin-top:6px;font-size:9px;color:#444;font-family:monospace">
-    <span id="versionLabel">v20260711_1404</span>
+    <span id="versionLabel">v20260711_1408</span>
     <span id="coordsLabel">GPS: --</span>
     <span id="cityLabel">--</span>
   </div>
@@ -268,7 +268,10 @@
           function showCoords(lat, lng) {
             cl.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
             vl.textContent = 'ZZ…';
-            fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=zh`)
+            const ctrl = new AbortController();
+            setTimeout(() => ctrl.abort(), 5000);
+            fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=zh`,
+              { signal: ctrl.signal })
               .then(r => r.json()).then(d => {
                 const parts = [d.principalSubdivision, d.city, d.locality].filter(Boolean);
                 vl.textContent = parts.join(' ') || '--';
