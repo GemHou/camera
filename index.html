@@ -81,7 +81,7 @@
   <p class="hint">
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
-  <p style="font-size:9px;color:#444;text-align:center;margin-top:6px;font-family:monospace" id="versionBar">v20260711_1353 | GPS: --</p>
+  <p style="font-size:9px;color:#444;text-align:center;margin-top:6px;font-family:monospace" id="versionBar">v20260711_1357 | GPS: --</p>
 
   <canvas id="canvas" hidden></canvas>
 
@@ -258,35 +258,41 @@
         // location
         (function locate(){
           const bar = document.getElementById('versionBar');
-          bar.textContent = 'v20260711_1353 | DWZ…';
+          bar.textContent = 'v20260711_1357 | DWZ…';
 
           function showCoords(lat, lng) {
-            bar.textContent = `v20260711_1353 | ${lat.toFixed(4)}, ${lng.toFixed(4)} | ZZ…`;
+            bar.textContent = `v20260711_1357 | ${lat.toFixed(4)}, ${lng.toFixed(4)} | ZZ…`;
             fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&accept-language=zh`,
               { headers: { 'User-Agent': 'GemHouCamera/1.0' } })
               .then(r => r.json()).then(d => {
                 const a = d.address;
                 const parts = [a.state, a.city||a.county||a.town, a.suburb||a.village].filter(Boolean);
-                bar.textContent = `v20260711_1353 | ${lat.toFixed(4)}, ${lng.toFixed(4)} | ${parts.join(' ')}`;
-              }).catch(() => { bar.textContent = `v20260711_1353 | ${lat.toFixed(4)}, ${lng.toFixed(4)}`; });
+                bar.textContent = `v20260711_1357 | ${lat.toFixed(4)}, ${lng.toFixed(4)} | ${parts.join(' ')}`;
+              }).catch(() => { bar.textContent = `v20260711_1357 | ${lat.toFixed(4)}, ${lng.toFixed(4)}`; });
           }
 
           if (!('geolocation' in navigator)) {
-            bar.textContent = 'v20260711_1353 | DWZ SB (no GPS)';
+            bar.textContent = 'v20260711_1357 | DWZ SB (no GPS)';
             return;
           }
           navigator.geolocation.getCurrentPosition(
             (p) => showCoords(p.coords.latitude, p.coords.longitude),
             () => {
-              bar.textContent = 'v20260711_1353 | DWZ… (WL/JZ)';
+              bar.textContent = 'v20260711_1357 | DWZ… (WL/JZ)';
               navigator.geolocation.getCurrentPosition(
                 (p) => showCoords(p.coords.latitude, p.coords.longitude),
                 () => {
-                  bar.textContent = 'v20260711_1353 | DWZ… (IP)';
+                  bar.textContent = 'v20260711_1357 | DWZ… (IP)';
                   fetch('https://ip-api.com/json/?fields=lat,lon,status').then(r=>r.json()).then(d => {
                     if (d.status==='success') showCoords(d.lat, d.lon);
-                    else bar.textContent = 'v20260711_1353 | DWZ SB';
-                  }).catch(() => { bar.textContent = 'v20260711_1353 | DWZ SB'; });
+                    else throw Error();
+                  }).catch(() => {
+                    fetch('https://ipinfo.io/json').then(r=>r.json()).then(d => {
+                      if (d.loc) { const c=d.loc.split(','); showCoords(parseFloat(c[0]), parseFloat(c[1])); }
+                      else bar.textContent = 'v20260711_1357 | DWZ SB';
+                    }).catch(() => { bar.textContent = 'v20260711_1357 | DWZ SB'; });
+                  });
+                },
                 },
                 { enableHighAccuracy: false, timeout: 8000 }
               );
