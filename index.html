@@ -83,7 +83,7 @@
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
   <div style="display:flex;justify-content:center;gap:10px;margin-top:6px;font-size:9px;color:#444;font-family:monospace">
-    <span id="versionLabel">v20260711_2152</span>
+    <span id="versionLabel">v20260711_2154</span>
     <span id="coordsLabel">GPS: --</span>
     <span id="cityLabel">--</span>
   </div>
@@ -110,6 +110,9 @@
     const autoCbBtn = document.getElementById('autoCbBtn');
     const switchCamBtn = document.getElementById('switchCamBtn');
     let facingMode = 'environment';
+    let cameraList = [];
+    let cameraIndex = 0;
+    let selectedDeviceId = null;
     const netBtn = document.getElementById('netBtn');
 
     const SCORE_KEYS = ['total','element','story','composition','light','atmosphere'];
@@ -254,13 +257,19 @@
     async function startCamera(facing) {
       if (facing) facingMode = facing;
       try {
+        if (cameraList.length === 0) {
+          const all = await navigator.mediaDevices.enumerateDevices();
+          cameraList = all.filter(d => d.kind === 'videoinput');
+          if (cameraList.length > 1) cameraIndex = 0;
+        }
         if (video.srcObject) {
           video.srcObject.getTracks().forEach(t => t.stop());
         }
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
-          audio: false
-        });
+        const cid = cameraList[cameraIndex]?.deviceId;
+        const constraints = { video: { width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false };
+        if (cid) { constraints.video.deviceId = { exact: cid }; }
+        else { constraints.video.facingMode = facingMode; }
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = stream;
         await video.play();
         captureBtn.disabled = false;
@@ -320,9 +329,11 @@
     }
 
     function switchCamera() {
-      facingMode = facingMode === 'environment' ? 'user' : 'environment';
-      switchCamBtn.textContent = facingMode === 'environment' ? 'QH SXT (H)' : 'QH SXT (Q)';
-      startCamera(facingMode);
+      if (cameraList.length === 0) return;
+      cameraIndex = (cameraIndex + 1) % cameraList.length;
+      const label = cameraList[cameraIndex].label || `SXT ${cameraIndex+1}`;
+      switchCamBtn.textContent = `QH (${cameraIndex+1}/${cameraList.length})`;
+      startCamera();
     }
 
     function takePhoto() {
