@@ -87,7 +87,7 @@
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
   <div style="display:flex;justify-content:center;gap:10px;margin-top:6px;font-size:9px;color:#444;font-family:monospace">
-    <span id="versionLabel">v20260711_2222</span>
+    <span id="versionLabel">v20260711_2225</span>
     <span id="coordsLabel">GPS: --</span>
     <span id="cityLabel">--</span>
   </div>
@@ -321,9 +321,7 @@
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         const track = stream.getVideoTracks()[0];
         const cap = track.getCapabilities?.();
-        // Store zoom info
-        window._zoomRange = (cap?.zoom && cap.zoom.max > 1) ? { min: cap.zoom.min, max: cap.zoom.max } :
-                           (cam.zoomMax > 1) ? { min: cam.zoomMin || 1, max: cam.zoomMax } : null;
+        window._zoomRange = (cap?.zoom) ? { min: Math.min(cap.zoom.min, 0.5), max: Math.max(cap.zoom.max, 1) } : { min: 0.5, max: 10 };
         window._zoomTrack = track;
         video.srcObject = stream;
         await video.play();
@@ -332,17 +330,14 @@
         switchCamBtn.textContent = `QH ${cameraIndex+1}/${cameraList.length}`;
         const zs = document.getElementById('zoomSlider');
         const zl = document.getElementById('zoomLabel');
-        if (window._zoomRange && zs) {
-          const r = window._zoomRange;
-          zs.min = Math.min(r.min, 0.5);  // allow trying ultrawide even if not advertised
-          zs.min = r.min; zs.max = r.max;
-          zs.step = Math.max(0.01, (r.max-r.min)/20);
-          zs.value = Math.max(r.min, 1);
+        if (zs) {
+          const r = window._zoomRange || { min: 0.5, max: 10 };
+          zs.min = Math.min(r.min, 0.5);
+          zs.max = Math.max(r.max, 10);
+          zs.step = Math.max(0.01, (zs.max-zs.min)/20);
+          zs.value = Math.max(zs.min, 1);
           zs.style.display = ''; zl.style.display = '';
           updateZoom(zs.value);
-        } else if (zs) {
-          zs.style.display = 'none';
-          zl.style.display = 'none';
         }
         updateControls();
         setStatus('JX', 'ready');
