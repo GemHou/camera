@@ -82,7 +82,7 @@
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
   <div style="display:flex;justify-content:center;gap:10px;margin-top:6px;font-size:9px;color:#444;font-family:monospace">
-    <span id="versionLabel">v20260711_1401</span>
+    <span id="versionLabel">v20260711_1404</span>
     <span id="coordsLabel">GPS: --</span>
     <span id="cityLabel">--</span>
   </div>
@@ -268,11 +268,9 @@
           function showCoords(lat, lng) {
             cl.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
             vl.textContent = 'ZZ…';
-            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&accept-language=zh`,
-              { headers: { 'User-Agent': 'GemHouCamera/1.0' } })
+            fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=zh`)
               .then(r => r.json()).then(d => {
-                const a = d.address;
-                const parts = [a.state, a.city||a.county||a.town, a.suburb||a.village].filter(Boolean);
+                const parts = [d.principalSubdivision, d.city, d.locality].filter(Boolean);
                 vl.textContent = parts.join(' ') || '--';
               }).catch(() => { vl.textContent = '--'; });
           }
