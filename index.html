@@ -81,7 +81,7 @@
   <p class="hint">
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
-  <p style="font-size:9px;color:#444;text-align:center;margin-top:6px;font-family:monospace" id="versionBar">v20260711_1345 | GPS: --</p>
+  <p style="font-size:9px;color:#444;text-align:center;margin-top:6px;font-family:monospace" id="versionBar">v20260711_1346 | GPS: --</p>
 
   <canvas id="canvas" hidden></canvas>
 
@@ -259,8 +259,20 @@
         if ('geolocation' in navigator) {
           navigator.geolocation.getCurrentPosition(
             (p) => {
-              document.getElementById('versionBar').textContent =
-                `v20260711_1345 | ${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)}`;
+              const lat = p.coords.latitude.toFixed(5);
+              const lng = p.coords.longitude.toFixed(5);
+              document.getElementById('versionBar').textContent = `v20260711_1346 | ${lat}, ${lng} | ZZ…`;
+              // reverse geocode
+              fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&accept-language=zh`,
+                { headers: { 'User-Agent': 'GemHouCamera/1.0' } })
+                .then(r => r.json())
+                .then(d => {
+                  const a = d.address;
+                  const parts = [a.state, a.city || a.county || a.town, a.suburb || a.village].filter(Boolean);
+                  document.getElementById('versionBar').textContent =
+                    `v20260711_1346 | ${lat}, ${lng} | ${parts.join(' ')}`;
+                })
+                .catch(() => {});
             },
             () => {},
             { enableHighAccuracy: true, timeout: 10000 }
