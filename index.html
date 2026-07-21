@@ -87,7 +87,7 @@
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
   <div style="display:flex;justify-content:center;gap:10px;margin-top:6px;font-size:9px;color:#444;font-family:monospace">
-    <span id="versionLabel">v20260722_0047</span>
+    <span id="versionLabel">v20260722_0049</span>
     <span id="coordsLabel">GPS: --</span>
     <span id="cityLabel">--</span>
   </div>
@@ -159,16 +159,26 @@
     }
 
     function drawBbox(bbox) {
+      drawMultiBbox(bbox ? [bbox] : [], 0);
+    }
+
+    function drawMultiBbox(bboxes, bestIdx) {
       const vw = video.videoWidth, vh = video.videoHeight;
       if (!vw || !vh) return;
       bboxCanvas.width = vw; bboxCanvas.height = vh;
       bboxCtx.clearRect(0, 0, vw, vh);
-      if (!bbox) return;
-      const bx = Math.round(bbox[0]*vw), by = Math.round(bbox[1]*vh);
-      const bw = Math.round((bbox[2]-bbox[0])*vw), bh = Math.round((bbox[3]-bbox[1])*vh);
-      bboxCtx.strokeStyle = '#00FF00';
-      bboxCtx.lineWidth = Math.max(3, vw/320);
-      bboxCtx.strokeRect(bx, by, bw, bh);
+      if (!bboxes.length) return;
+      const colors = ['#FF4444', '#44FF44', '#4488FF'];
+      for (let k = 0; k < bboxes.length; k++) {
+        const b = bboxes[k];
+        const bx = Math.round(b[0]*vw), by = Math.round(b[1]*vh);
+        const bw = Math.round((b[2]-b[0])*vw), bh = Math.round((b[3]-b[1])*vh);
+        bboxCtx.strokeStyle = k === bestIdx ? '#00FF00' : colors[k];
+        bboxCtx.lineWidth = k === bestIdx ? Math.max(3, vw/320) : Math.max(1, vw/500);
+        bboxCtx.setLineDash(k === bestIdx ? [] : [4, 4]);
+        bboxCtx.strokeRect(bx, by, bw, bh);
+      }
+      bboxCtx.setLineDash([]);
     }
 
     function updateControls() {
@@ -418,13 +428,14 @@
       updateControls();
       try {
         const r = await CropBeautyEngine.runCropAndBeauty(video);
-        drawBbox(r.bbox);
+        // Draw winning bbox in green, others in dim colors
+        const allBboxes = await CropBeautyEngine.getAllBboxes(video);
+        drawMultiBbox(allBboxes, r.bboxIdx);
         updateScoreDisplay(r);
-        // draw cropped preview
         const vw = video.videoWidth, vh = video.videoHeight;
         const bx = [Math.round(r.bbox[0]*vw), Math.round(r.bbox[1]*vh), Math.round(r.bbox[2]*vw), Math.round(r.bbox[3]*vh)];
         cropPreviewCtx.drawImage(video, bx[0], bx[1], bx[2]-bx[0], bx[3]-bx[1], 0, 0, cropPreview.width, cropPreview.height);
-        setStatus(`CQ ${r.cropMs.toFixed(0)}ms MX ${r.beautyMs.toFixed(0)}ms`, 'ready');
+        setStatus(`CQ ${r.cropMs.toFixed(0)}ms MX ${r.beautyMs.toFixed(0)}ms (M${r.bboxIdx})`, 'ready');
         if (r.total >= threshold) {
           playBeep();
           downloadCropped(r.bbox);

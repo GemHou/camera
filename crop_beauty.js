@@ -204,21 +204,51 @@ async function runCropAndBeauty(video) {
   const t0 = performance.now();
   const co = await cropSession.run({ pixel_values: ci });
   const cropMs = performance.now() - t0;
-  const bbox = co.pred_bbox.data;
+  const raw = co.bboxes.data;  // 3 bboxes × 4 = 12 values, or just 4 if old model
 
-  const bt = cbPreprocessCrop(video, bbox, BEAUTY_INPUT.w, BEAUTY_INPUT.h);
-  const bi = new ort.Tensor('float32', bt, [1, 3, BEAUTY_INPUT.h, BEAUTY_INPUT.w]);
-  const t1 = performance.now();
-  const bo = await beautySession.run({ input: bi });
-  const beautyMs = performance.now() - t1;
-  const s = bo.scores.data;
+  // Handle both old (4 values) and new (12 values) models
+  const nBboxes = raw.length >= 12 ? 3 : 1;
+  const bboxes = [];
+  for (let k = 0; k < nBboxes; k++) {
+    bboxes.push([raw[k*4], raw[k*4+1], raw[k*4+2], raw[k*4+3]]);
+  }
 
-  return {
-    bbox: [bbox[0], bbox[1], bbox[2], bbox[3]],
-    cropMs, beautyMs, totalMs: cropMs + beautyMs,
-    total: s[0]*100, element: s[1]*100, story: s[2]*100,
-    composition: s[3]*100, light: s[4]*100, atmosphere: s[5]*100,
-  };
+  // Run beauty on each bbox, pick best
+  let bestScore = -Infinity, bestResult = null;
+  for (let k = 0; k < nBboxes; k++) {
+    const bt = cbPreprocessCrop(video, bboxes[k], BEAUTY_INPUT.w, BEAUTY_INPUT.h);
+    const bi = new ort.Tensor('float32', bt, [1, 3, BEAUTY_INPUT.h, BEAUTY_INPUT.w]);
+    const t1 = performance.now();
+    const bo = await beautySession.run({ input: bi });
+    const bMs = performance.now() - t1;
+    const s = bo.scores.data;
+    if (s[0] * 100 > bestScore) {
+      bestScore = s[0] * 100;
+      bestResult = {
+        bbox: bboxes[k], bboxIdx: k,
+        cropMs: k === 0 ? cropMs : 0, beautyMs: bMs,
+        total: s[0]*100, element: s[1]*100, story: s[2]*100,
+        composition: s[3]*100, light: s[4]*100, atmosphere: s[5]*100,
+      };
+    }
+  }
+
+  return bestResult;
+}
+
+// separate function to get all 3 bboxes for display
+async function getAllBboxes(video) {
+  if (!cropSession) throw new Error('CQ MX WJX');
+  const ct = cbPreprocessFrame(video, CROP_INPUT.w, CROP_INPUT.h);
+  const ci = new ort.Tensor('float32', ct, [1, 3, CROP_INPUT.h, CROP_INPUT.w]);
+  const co = await cropSession.run({ pixel_values: ci });
+  const raw = co.bboxes.data;
+  const nBboxes = raw.length >= 12 ? 3 : 1;
+  const bboxes = [];
+  for (let k = 0; k < nBboxes; k++) {
+    bboxes.push([raw[k*4], raw[k*4+1], raw[k*4+2], raw[k*4+3]]);
+  }
+  return bboxes;
 }
 
 window.CropBeautyEngine = {
@@ -226,5 +256,5 @@ window.CropBeautyEngine = {
   initCropFromFile, initBeautyFromFile,
   initCropFromBuffer, initBeautyFromBuffer,
   loadCached, configureCbOrt,
-  runCropAndBeauty,
+  runCropAndBeauty, getAllBboxes,
 };
