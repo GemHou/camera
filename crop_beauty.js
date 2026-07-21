@@ -204,7 +204,7 @@ async function runCropAndBeauty(video) {
   const t0 = performance.now();
   const co = await cropSession.run({ pixel_values: ci });
   const cropMs = performance.now() - t0;
-  const raw = co.bboxes.data;  // 3 bboxes × 4 = 12 values, or just 4 if old model
+  const raw = (co.bboxes || co.pred_bbox).data;  // new model: bboxes, old model: pred_bbox
 
   // Handle both old (4 values) and new (12 values) models
   const nBboxes = raw.length >= 12 ? 3 : 1;
