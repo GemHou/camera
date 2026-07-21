@@ -242,7 +242,8 @@ async function getAllBboxes(video) {
   const ct = cbPreprocessFrame(video, CROP_INPUT.w, CROP_INPUT.h);
   const ci = new ort.Tensor('float32', ct, [1, 3, CROP_INPUT.h, CROP_INPUT.w]);
   const co = await cropSession.run({ pixel_values: ci });
-  const raw = co.bboxes.data;
+  const raw = (co.bboxes || co.pred_bbox).data;
+  const nBboxes = raw.length >= 12 ? 3 : 1;
   const nBboxes = raw.length >= 12 ? 3 : 1;
   const bboxes = [];
   for (let k = 0; k < nBboxes; k++) {
