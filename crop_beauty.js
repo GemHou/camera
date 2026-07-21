@@ -196,23 +196,21 @@ function cbPreprocessCrop(video, bbox, targetW, targetH) {
   return t;
 }
 
-async function runCropAndBeauty(video) {
+async function runCropAndBeauty(video, onStatus) {
   if (!cropSession || !beautySession) throw new Error('MXWJJX');
 
-  console.log('cropSession:', cropSession ? 'OK' : 'NULL', 'run:', typeof cropSession.run);
-
+  onStatus?.('RUN1');
   const ct = cbPreprocessFrame(video, CROP_INPUT.w, CROP_INPUT.h);
   const ci = new ort.Tensor('float32', ct, [1, 3, CROP_INPUT.h, CROP_INPUT.w]);
   const t0 = performance.now();
-  console.log('Running crop inference...');
+  onStatus?.('RUN2');
   const co = await cropSession.run({ pixel_values: ci });
-  console.log('Crop done. Output:', Object.keys(co));
+  onStatus?.('RUN3 KEYS=' + Object.keys(co).join(','));
   const cropMs = performance.now() - t0;
-  // Debug: show all output names
-  const outKeys = Object.keys(co);
-  console.log('Crop output keys:', outKeys, 'values:', outKeys.map(k => co[k].data.length));
-  const tensor = co[outKeys[0]];  // use first output regardless of name
+  const tensor = co[Object.keys(co)[0]];
+  onStatus?.('RUN4 TENSOR=' + (tensor ? 'OK' : 'NULL'));
   const raw = tensor.data;
+  onStatus?.('RUN5 RAW=' + raw.length);
 
   // Handle both old (4 values) and new (12 values) models
   const nBboxes = raw.length >= 12 ? 3 : 1;

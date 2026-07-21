@@ -87,7 +87,7 @@
     TLZLLQBDYX（WASM）。KS "SC MX WJ" XZ .onnx WJ，HCBDHC，BXWL。
   </p>
   <div style="display:flex;justify-content:center;gap:10px;margin-top:6px;font-size:9px;color:#444;font-family:monospace">
-    <span id="versionLabel">v20260722_0059</span>
+    <span id="versionLabel">v20260722_0102</span>
     <span id="coordsLabel">GPS: --</span>
     <span id="cityLabel">--</span>
   </div>
@@ -427,7 +427,7 @@
       setStatus('TLZ…', 'busy');
       updateControls();
       try {
-        const r = await CropBeautyEngine.runCropAndBeauty(video);
+        const r = await CropBeautyEngine.runCropAndBeauty(video, t => setStatus(t, 'busy'));
         // Draw winning bbox in green, others in dim colors
         const allBboxes = await CropBeautyEngine.getAllBboxes(video);
         drawMultiBbox(allBboxes, r.bboxIdx);
