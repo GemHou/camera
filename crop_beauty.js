@@ -199,18 +199,13 @@ function cbPreprocessCrop(video, bbox, targetW, targetH) {
 async function runCropAndBeauty(video, onStatus) {
   if (!cropSession || !beautySession) throw new Error('MXWJJX');
 
-  onStatus?.('RUN1');
   const ct = cbPreprocessFrame(video, CROP_INPUT.w, CROP_INPUT.h);
   const ci = new ort.Tensor('float32', ct, [1, 3, CROP_INPUT.h, CROP_INPUT.w]);
   const t0 = performance.now();
-  onStatus?.('RUN2');
   const co = await cropSession.run({ pixel_values: ci });
-  onStatus?.('RUN3 KEYS=' + Object.keys(co).join(','));
   const cropMs = performance.now() - t0;
   const tensor = co[Object.keys(co)[0]];
-  onStatus?.('RUN4 TENSOR=' + (tensor ? 'OK' : 'NULL'));
   const raw = tensor.data;
-  onStatus?.('RUN5 RAW=' + raw.length);
 
   // Handle both old (4 values) and new (12 values) models
   const nBboxes = raw.length >= 12 ? 3 : 1;
@@ -250,7 +245,6 @@ async function getAllBboxes(video) {
   const co = await cropSession.run({ pixel_values: ci });
   const tensor = co[Object.keys(co)[0]];
   const raw = tensor.data;
-  const nBboxes = raw.length >= 12 ? 3 : 1;
   const nBboxes = raw.length >= 12 ? 3 : 1;
   const bboxes = [];
   for (let k = 0; k < nBboxes; k++) {
