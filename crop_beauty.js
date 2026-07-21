@@ -204,7 +204,11 @@ async function runCropAndBeauty(video) {
   const t0 = performance.now();
   const co = await cropSession.run({ pixel_values: ci });
   const cropMs = performance.now() - t0;
-  const raw = (co.bboxes || co.pred_bbox).data;  // new model: bboxes, old model: pred_bbox
+  // Debug: show all output names
+  const outKeys = Object.keys(co);
+  console.log('Crop output keys:', outKeys, 'values:', outKeys.map(k => co[k].data.length));
+  const tensor = co[outKeys[0]];  // use first output regardless of name
+  const raw = tensor.data;
 
   // Handle both old (4 values) and new (12 values) models
   const nBboxes = raw.length >= 12 ? 3 : 1;
@@ -242,7 +246,8 @@ async function getAllBboxes(video) {
   const ct = cbPreprocessFrame(video, CROP_INPUT.w, CROP_INPUT.h);
   const ci = new ort.Tensor('float32', ct, [1, 3, CROP_INPUT.h, CROP_INPUT.w]);
   const co = await cropSession.run({ pixel_values: ci });
-  const raw = (co.bboxes || co.pred_bbox).data;
+  const tensor = co[Object.keys(co)[0]];
+  const raw = tensor.data;
   const nBboxes = raw.length >= 12 ? 3 : 1;
   const nBboxes = raw.length >= 12 ? 3 : 1;
   const bboxes = [];
