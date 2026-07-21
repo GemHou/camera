@@ -199,10 +199,14 @@ function cbPreprocessCrop(video, bbox, targetW, targetH) {
 async function runCropAndBeauty(video) {
   if (!cropSession || !beautySession) throw new Error('MXWJJX');
 
+  console.log('cropSession:', cropSession ? 'OK' : 'NULL', 'run:', typeof cropSession.run);
+
   const ct = cbPreprocessFrame(video, CROP_INPUT.w, CROP_INPUT.h);
   const ci = new ort.Tensor('float32', ct, [1, 3, CROP_INPUT.h, CROP_INPUT.w]);
   const t0 = performance.now();
+  console.log('Running crop inference...');
   const co = await cropSession.run({ pixel_values: ci });
+  console.log('Crop done. Output:', Object.keys(co));
   const cropMs = performance.now() - t0;
   // Debug: show all output names
   const outKeys = Object.keys(co);
