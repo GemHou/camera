@@ -2,7 +2,7 @@
 
 const CB_MEAN = [0.485, 0.456, 0.406];
 const CB_STD = [0.229, 0.224, 0.225];
-const CROP_INPUT = { w: 480, h: 270 };
+const CROP_INPUT = { w: 500, h: 500 };
 const BEAUTY_INPUT = { w: 500, h: 500 };
 
 const DB_NAME = 'camera-cb-cache';
